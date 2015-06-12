@@ -206,7 +206,7 @@ void slirp_init(int restricted, const char *special_ip)
     inet_aton(slirp_special_ip, &special_addr);
     alias_addr.s_addr = special_addr.s_addr | htonl(CTL_ALIAS);
     getouraddr();
-    register_savevm("slirp", 0, 1, slirp_state_save, slirp_state_load, NULL);
+    register_savevm(NULL, "slirp", 0, 1, slirp_state_save, slirp_state_load, NULL);
 }
 
 #define CONN_CANFSEND(so) (((so)->so_state & (SS_FCANTSENDMORE|SS_ISFCONNECTED)) == SS_ISFCONNECTED)

@@ -104,6 +104,7 @@
 #endif
 
 #ifdef _WIN32
+#include <winsock2.h>
 #include <windows.h>
 #include <malloc.h>
 #include <sys/timeb.h>
@@ -960,7 +961,6 @@ static void slirp_redirection(Monitor *mon, const char *redir_str)
     if (r == p) {
         goto fail_syntax;
     }
-
     if (slirp_redir(is_udp, host_port, guest_addr, guest_port) < 0) {
         config_error(mon, "could not set up redirection '%s'\n", redir_str);
     }

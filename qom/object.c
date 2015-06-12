@@ -804,146 +804,146 @@ void object_property_set(Object *obj, Visitor *v, const char *name,
     }
 }
 
-void object_property_set_str(Object *obj, const char *value,
-                             const char *name, Error **errp)
-{
-    QString *qstr = qstring_from_str(value);
-    object_property_set_qobject(obj, QOBJECT(qstr), name, errp);
+//void object_property_set_str(Object *obj, const char *value,
+//                             const char *name, Error **errp)
+//{
+//    QString *qstr = qstring_from_str(value);
+//    object_property_set_qobject(obj, QOBJECT(qstr), name, errp);
 
-    QDECREF(qstr);
-}
+//    QDECREF(qstr);
+//}
 
-char *object_property_get_str(Object *obj, const char *name,
-                              Error **errp)
-{
-    QObject *ret = object_property_get_qobject(obj, name, errp);
-    QString *qstring;
-    char *retval;
+//char *object_property_get_str(Object *obj, const char *name,
+//                              Error **errp)
+//{
+//    QObject *ret = object_property_get_qobject(obj, name, errp);
+//    QString *qstring;
+//    char *retval;
 
-    if (!ret) {
-        return NULL;
-    }
-    qstring = qobject_to_qstring(ret);
-    if (!qstring) {
-        error_set(errp, QERR_INVALID_PARAMETER_TYPE, name, "string");
-        retval = NULL;
-    } else {
-        retval = g_strdup(qstring_get_str(qstring));
-    }
+//    if (!ret) {
+//        return NULL;
+//    }
+//    qstring = qobject_to_qstring(ret);
+//    if (!qstring) {
+//        error_set(errp, QERR_INVALID_PARAMETER_TYPE, name, "string");
+//        retval = NULL;
+//    } else {
+//        retval = g_strdup(qstring_get_str(qstring));
+//    }
 
-    QDECREF(qstring);
-    return retval;
-}
+//    QDECREF(qstring);
+//    return retval;
+//}
 
-void object_property_set_link(Object *obj, Object *value,
-                              const char *name, Error **errp)
-{
-    gchar *path = object_get_canonical_path(value);
-    object_property_set_str(obj, path, name, errp);
-    g_free(path);
-}
+//void object_property_set_link(Object *obj, Object *value,
+//                              const char *name, Error **errp)
+//{
+//    gchar *path = object_get_canonical_path(value);
+//    object_property_set_str(obj, path, name, errp);
+//    g_free(path);
+//}
 
-Object *object_property_get_link(Object *obj, const char *name,
-                                 Error **errp)
-{
-    char *str = object_property_get_str(obj, name, errp);
-    Object *target = NULL;
+//Object *object_property_get_link(Object *obj, const char *name,
+//                                 Error **errp)
+//{
+//    char *str = object_property_get_str(obj, name, errp);
+//    Object *target = NULL;
 
-    if (str && *str) {
-        target = object_resolve_path(str, NULL);
-        if (!target) {
-            error_set(errp, QERR_DEVICE_NOT_FOUND, str);
-        }
-    }
+//    if (str && *str) {
+//        target = object_resolve_path(str, NULL);
+//        if (!target) {
+//            error_set(errp, QERR_DEVICE_NOT_FOUND, str);
+//        }
+//    }
 
-    g_free(str);
-    return target;
-}
+//    g_free(str);
+//    return target;
+//}
 
-void object_property_set_bool(Object *obj, bool value,
-                              const char *name, Error **errp)
-{
-    QBool *qbool = qbool_from_int(value);
-    object_property_set_qobject(obj, QOBJECT(qbool), name, errp);
+//void object_property_set_bool(Object *obj, bool value,
+//                              const char *name, Error **errp)
+//{
+//    QBool *qbool = qbool_from_int(value);
+//    object_property_set_qobject(obj, QOBJECT(qbool), name, errp);
 
-    QDECREF(qbool);
-}
+//    QDECREF(qbool);
+//}
 
-bool object_property_get_bool(Object *obj, const char *name,
-                              Error **errp)
-{
-    QObject *ret = object_property_get_qobject(obj, name, errp);
-    QBool *qbool;
-    bool retval;
+//bool object_property_get_bool(Object *obj, const char *name,
+//                              Error **errp)
+//{
+//    QObject *ret = object_property_get_qobject(obj, name, errp);
+//    QBool *qbool;
+//    bool retval;
 
-    if (!ret) {
-        return false;
-    }
-    qbool = qobject_to_qbool(ret);
-    if (!qbool) {
-        error_set(errp, QERR_INVALID_PARAMETER_TYPE, name, "boolean");
-        retval = false;
-    } else {
-        retval = qbool_get_int(qbool);
-    }
+//    if (!ret) {
+//        return false;
+//    }
+//    qbool = qobject_to_qbool(ret);
+//    if (!qbool) {
+//        error_set(errp, QERR_INVALID_PARAMETER_TYPE, name, "boolean");
+//        retval = false;
+//    } else {
+//        retval = qbool_get_int(qbool);
+//    }
 
-    QDECREF(qbool);
-    return retval;
-}
+//    QDECREF(qbool);
+//    return retval;
+//}
 
-void object_property_set_int(Object *obj, int64_t value,
-                             const char *name, Error **errp)
-{
-    QInt *qint = qint_from_int(value);
-    object_property_set_qobject(obj, QOBJECT(qint), name, errp);
+//void object_property_set_int(Object *obj, int64_t value,
+//                             const char *name, Error **errp)
+//{
+//    QInt *qint = qint_from_int(value);
+//    object_property_set_qobject(obj, QOBJECT(qint), name, errp);
 
-    QDECREF(qint);
-}
+//    QDECREF(qint);
+//}
 
-int64_t object_property_get_int(Object *obj, const char *name,
-                                Error **errp)
-{
-    QObject *ret = object_property_get_qobject(obj, name, errp);
-    QInt *qint;
-    int64_t retval;
+//int64_t object_property_get_int(Object *obj, const char *name,
+//                                Error **errp)
+//{
+//    QObject *ret = object_property_get_qobject(obj, name, errp);
+//    QInt *qint;
+//    int64_t retval;
 
-    if (!ret) {
-        return -1;
-    }
-    qint = qobject_to_qint(ret);
-    if (!qint) {
-        error_set(errp, QERR_INVALID_PARAMETER_TYPE, name, "int");
-        retval = -1;
-    } else {
-        retval = qint_get_int(qint);
-    }
+//    if (!ret) {
+//        return -1;
+//    }
+//    qint = qobject_to_qint(ret);
+//    if (!qint) {
+//        error_set(errp, QERR_INVALID_PARAMETER_TYPE, name, "int");
+//        retval = -1;
+//    } else {
+//        retval = qint_get_int(qint);
+//    }
 
-    QDECREF(qint);
-    return retval;
-}
+//    QDECREF(qint);
+//    return retval;
+//}
 
-void object_property_parse(Object *obj, const char *string,
-                           const char *name, Error **errp)
-{
-    StringInputVisitor *mi;
-    mi = string_input_visitor_new(string);
-    object_property_set(obj, string_input_get_visitor(mi), name, errp);
+//void object_property_parse(Object *obj, const char *string,
+//                           const char *name, Error **errp)
+//{
+//    StringInputVisitor *mi;
+//    mi = string_input_visitor_new(string);
+//    object_property_set(obj, string_input_get_visitor(mi), name, errp);
 
-    string_input_visitor_cleanup(mi);
-}
+//    string_input_visitor_cleanup(mi);
+//}
 
-char *object_property_print(Object *obj, const char *name,
-                            Error **errp)
-{
-    StringOutputVisitor *mo;
-    char *string;
+//char *object_property_print(Object *obj, const char *name,
+//                            Error **errp)
+//{
+//    StringOutputVisitor *mo;
+//    char *string;
 
-    mo = string_output_visitor_new();
-    object_property_get(obj, string_output_get_visitor(mo), name, errp);
-    string = string_output_get_string(mo);
-    string_output_visitor_cleanup(mo);
-    return string;
-}
+//    mo = string_output_visitor_new();
+//    object_property_get(obj, string_output_get_visitor(mo), name, errp);
+//    string = string_output_get_string(mo);
+//    string_output_visitor_cleanup(mo);
+//    return string;
+//}
 
 const char *object_property_get_type(Object *obj, const char *name, Error **errp)
 {
@@ -966,16 +966,16 @@ Object *object_get_root(void)
     return root;
 }
 
-static void object_get_child_property(Object *obj, Visitor *v, void *opaque,
-                                      const char *name, Error **errp)
-{
-    Object *child = opaque;
-    gchar *path;
+//static void object_get_child_property(Object *obj, Visitor *v, void *opaque,
+//                                      const char *name, Error **errp)
+//{
+//    Object *child = opaque;
+//    gchar *path;
 
-    path = object_get_canonical_path(child);
-    visit_type_str(v, &path, name, errp);
-    g_free(path);
-}
+//    path = object_get_canonical_path(child);
+//    visit_type_str(v, &path, name, errp);
+//    g_free(path);
+//}
 
 static void object_finalize_child_property(Object *obj, const char *name,
                                            void *opaque)
@@ -985,101 +985,101 @@ static void object_finalize_child_property(Object *obj, const char *name,
     object_unref(child);
 }
 
-void object_property_add_child(Object *obj, const char *name,
-                               Object *child, Error **errp)
-{
-    gchar *type;
+//void object_property_add_child(Object *obj, const char *name,
+//                               Object *child, Error **errp)
+//{
+//    gchar *type;
 
-    type = g_strdup_printf("child<%s>", object_get_typename(OBJECT(child)));
+//    type = g_strdup_printf("child<%s>", object_get_typename(OBJECT(child)));
 
-    object_property_add(obj, name, type, object_get_child_property,
-                        NULL, object_finalize_child_property, child, errp);
+//    object_property_add(obj, name, type, object_get_child_property,
+//                        NULL, object_finalize_child_property, child, errp);
 
-    object_ref(child);
-    g_assert(child->parent == NULL);
-    child->parent = obj;
+//    object_ref(child);
+//    g_assert(child->parent == NULL);
+//    child->parent = obj;
 
-    g_free(type);
-}
+//    g_free(type);
+//}
 
-static void object_get_link_property(Object *obj, Visitor *v, void *opaque,
-                                     const char *name, Error **errp)
-{
-    Object **child = opaque;
-    gchar *path;
+//static void object_get_link_property(Object *obj, Visitor *v, void *opaque,
+//                                     const char *name, Error **errp)
+//{
+//    Object **child = opaque;
+//    gchar *path;
 
-    if (*child) {
-        path = object_get_canonical_path(*child);
-        visit_type_str(v, &path, name, errp);
-        g_free(path);
-    } else {
-        path = (gchar *)"";
-        visit_type_str(v, &path, name, errp);
-    }
-}
+//    if (*child) {
+//        path = object_get_canonical_path(*child);
+//        visit_type_str(v, &path, name, errp);
+//        g_free(path);
+//    } else {
+//        path = (gchar *)"";
+//        visit_type_str(v, &path, name, errp);
+//    }
+//}
 
-static void object_set_link_property(Object *obj, Visitor *v, void *opaque,
-                                     const char *name, Error **errp)
-{
-    Object **child = opaque;
-    Object *old_target;
-    bool ambiguous = false;
-    const char *type;
-    char *path;
-    gchar *target_type;
+//static void object_set_link_property(Object *obj, Visitor *v, void *opaque,
+//                                     const char *name, Error **errp)
+//{
+//    Object **child = opaque;
+//    Object *old_target;
+//    bool ambiguous = false;
+//    const char *type;
+//    char *path;
+//    gchar *target_type;
 
-    type = object_property_get_type(obj, name, NULL);
+//    type = object_property_get_type(obj, name, NULL);
 
-    visit_type_str(v, &path, name, errp);
+//    visit_type_str(v, &path, name, errp);
 
-    old_target = *child;
-    *child = NULL;
+//    old_target = *child;
+//    *child = NULL;
 
-    if (strcmp(path, "") != 0) {
-        Object *target;
+//    if (strcmp(path, "") != 0) {
+//        Object *target;
 
-        /* Go from link<FOO> to FOO.  */
-        target_type = g_strndup(&type[5], strlen(type) - 6);
-        target = object_resolve_path_type(path, target_type, &ambiguous);
+//        /* Go from link<FOO> to FOO.  */
+//        target_type = g_strndup(&type[5], strlen(type) - 6);
+//        target = object_resolve_path_type(path, target_type, &ambiguous);
 
-        if (ambiguous) {
-            error_set(errp, QERR_AMBIGUOUS_PATH, path);
-        } else if (target) {
-            object_ref(target);
-            *child = target;
-        } else {
-            target = object_resolve_path(path, &ambiguous);
-            if (target || ambiguous) {
-                error_set(errp, QERR_INVALID_PARAMETER_TYPE, name, target_type);
-            } else {
-                error_set(errp, QERR_DEVICE_NOT_FOUND, path);
-            }
-        }
-        g_free(target_type);
-    }
+//        if (ambiguous) {
+//            error_set(errp, QERR_AMBIGUOUS_PATH, path);
+//        } else if (target) {
+//            object_ref(target);
+//            *child = target;
+//        } else {
+//            target = object_resolve_path(path, &ambiguous);
+//            if (target || ambiguous) {
+//                error_set(errp, QERR_INVALID_PARAMETER_TYPE, name, target_type);
+//            } else {
+//                error_set(errp, QERR_DEVICE_NOT_FOUND, path);
+//            }
+//        }
+//        g_free(target_type);
+//    }
 
-    g_free(path);
+//    g_free(path);
 
-    if (old_target != NULL) {
-        object_unref(old_target);
-    }
-}
+//    if (old_target != NULL) {
+//        object_unref(old_target);
+//    }
+//}
 
-void object_property_add_link(Object *obj, const char *name,
-                              const char *type, Object **child,
-                              Error **errp)
-{
-    gchar *full_type;
+//void object_property_add_link(Object *obj, const char *name,
+//                              const char *type, Object **child,
+//                              Error **errp)
+//{
+//    gchar *full_type;
 
-    full_type = g_strdup_printf("link<%s>", type);
+//    full_type = g_strdup_printf("link<%s>", type);
 
-    object_property_add(obj, name, full_type,
-                        object_get_link_property,
-                        object_set_link_property,
-                        NULL, child, errp);
+//    object_property_add(obj, name, full_type,
+//                        object_get_link_property,
+//                        object_set_link_property,
+//                        NULL, child, errp);
 
-    g_free(full_type);
-}
+//    g_free(full_type);
+//}
 
 gchar *object_get_canonical_path(Object *obj)
 {
@@ -1230,35 +1230,35 @@ typedef struct StringProperty
     void (*set)(Object *, const char *, Error **);
 } StringProperty;
 
-static void property_get_str(Object *obj, Visitor *v, void *opaque,
-                             const char *name, Error **errp)
-{
-    StringProperty *prop = opaque;
-    char *value;
+//static void property_get_str(Object *obj, Visitor *v, void *opaque,
+//                             const char *name, Error **errp)
+//{
+//    StringProperty *prop = opaque;
+//    char *value;
 
-    value = prop->get(obj, errp);
-    if (value) {
-        visit_type_str(v, &value, name, errp);
-        g_free(value);
-    }
-}
+//    value = prop->get(obj, errp);
+//    if (value) {
+//        visit_type_str(v, &value, name, errp);
+//        g_free(value);
+//    }
+//}
 
-static void property_set_str(Object *obj, Visitor *v, void *opaque,
-                             const char *name, Error **errp)
-{
-    StringProperty *prop = opaque;
-    char *value;
-    Error *local_err = NULL;
+//static void property_set_str(Object *obj, Visitor *v, void *opaque,
+//                             const char *name, Error **errp)
+//{
+//    StringProperty *prop = opaque;
+//    char *value;
+//    Error *local_err = NULL;
 
-    visit_type_str(v, &value, name, &local_err);
-    if (local_err) {
-        error_propagate(errp, local_err);
-        return;
-    }
+//    visit_type_str(v, &value, name, &local_err);
+//    if (local_err) {
+//        error_propagate(errp, local_err);
+//        return;
+//    }
 
-    prop->set(obj, value, errp);
-    g_free(value);
-}
+//    prop->set(obj, value, errp);
+//    g_free(value);
+//}
 
 static void property_release_str(Object *obj, const char *name,
                                  void *opaque)
@@ -1267,22 +1267,22 @@ static void property_release_str(Object *obj, const char *name,
     g_free(prop);
 }
 
-void object_property_add_str(Object *obj, const char *name,
-                           char *(*get)(Object *, Error **),
-                           void (*set)(Object *, const char *, Error **),
-                           Error **errp)
-{
-    StringProperty *prop = g_malloc0(sizeof(*prop));
+//void object_property_add_str(Object *obj, const char *name,
+//                           char *(*get)(Object *, Error **),
+//                           void (*set)(Object *, const char *, Error **),
+//                           Error **errp)
+//{
+//    StringProperty *prop = g_malloc0(sizeof(*prop));
 
-    prop->get = get;
-    prop->set = set;
+//    prop->get = get;
+//    prop->set = set;
 
-    object_property_add(obj, name, "string",
-                        get ? property_get_str : NULL,
-                        set ? property_set_str : NULL,
-                        property_release_str,
-                        prop, errp);
-}
+//    object_property_add(obj, name, "string",
+//                        get ? property_get_str : NULL,
+//                        set ? property_set_str : NULL,
+//                        property_release_str,
+//                        prop, errp);
+//}
 
 typedef struct BoolProperty
 {
@@ -1290,31 +1290,31 @@ typedef struct BoolProperty
     void (*set)(Object *, bool, Error **);
 } BoolProperty;
 
-static void property_get_bool(Object *obj, Visitor *v, void *opaque,
-                              const char *name, Error **errp)
-{
-    BoolProperty *prop = opaque;
-    bool value;
+//static void property_get_bool(Object *obj, Visitor *v, void *opaque,
+//                              const char *name, Error **errp)
+//{
+//    BoolProperty *prop = opaque;
+//    bool value;
 
-    value = prop->get(obj, errp);
-    visit_type_bool(v, &value, name, errp);
-}
+//    value = prop->get(obj, errp);
+//    visit_type_bool(v, &value, name, errp);
+//}
 
-static void property_set_bool(Object *obj, Visitor *v, void *opaque,
-                              const char *name, Error **errp)
-{
-    BoolProperty *prop = opaque;
-    bool value;
-    Error *local_err = NULL;
+//static void property_set_bool(Object *obj, Visitor *v, void *opaque,
+//                              const char *name, Error **errp)
+//{
+//    BoolProperty *prop = opaque;
+//    bool value;
+//    Error *local_err = NULL;
 
-    visit_type_bool(v, &value, name, &local_err);
-    if (local_err) {
-        error_propagate(errp, local_err);
-        return;
-    }
+//    visit_type_bool(v, &value, name, &local_err);
+//    if (local_err) {
+//        error_propagate(errp, local_err);
+//        return;
+//    }
 
-    prop->set(obj, value, errp);
-}
+//    prop->set(obj, value, errp);
+//}
 
 static void property_release_bool(Object *obj, const char *name,
                                   void *opaque)
@@ -1323,110 +1323,110 @@ static void property_release_bool(Object *obj, const char *name,
     g_free(prop);
 }
 
-void object_property_add_bool(Object *obj, const char *name,
-                              bool (*get)(Object *, Error **),
-                              void (*set)(Object *, bool, Error **),
-                              Error **errp)
-{
-    BoolProperty *prop = g_malloc0(sizeof(*prop));
+//void object_property_add_bool(Object *obj, const char *name,
+//                              bool (*get)(Object *, Error **),
+//                              void (*set)(Object *, bool, Error **),
+//                              Error **errp)
+//{
+//    BoolProperty *prop = g_malloc0(sizeof(*prop));
 
-    prop->get = get;
-    prop->set = set;
+//    prop->get = get;
+//    prop->set = set;
 
-    object_property_add(obj, name, "bool",
-                        get ? property_get_bool : NULL,
-                        set ? property_set_bool : NULL,
-                        property_release_bool,
-                        prop, errp);
-}
+//    object_property_add(obj, name, "bool",
+//                        get ? property_get_bool : NULL,
+//                        set ? property_set_bool : NULL,
+//                        property_release_bool,
+//                        prop, errp);
+//}
 
 static char *qdev_get_type(Object *obj, Error **errp)
 {
     return g_strdup(object_get_typename(obj));
 }
 
-static void property_get_uint8_ptr(Object *obj, Visitor *v,
-                                   void *opaque, const char *name,
-                                   Error **errp)
-{
-    uint8_t value = *(uint8_t *)opaque;
-    visit_type_uint8(v, &value, name, errp);
-}
+//static void property_get_uint8_ptr(Object *obj, Visitor *v,
+//                                   void *opaque, const char *name,
+//                                   Error **errp)
+//{
+//    uint8_t value = *(uint8_t *)opaque;
+//    visit_type_uint8(v, &value, name, errp);
+//}
 
-static void property_get_uint16_ptr(Object *obj, Visitor *v,
-                                   void *opaque, const char *name,
-                                   Error **errp)
-{
-    uint16_t value = *(uint16_t *)opaque;
-    visit_type_uint16(v, &value, name, errp);
-}
+//static void property_get_uint16_ptr(Object *obj, Visitor *v,
+//                                   void *opaque, const char *name,
+//                                   Error **errp)
+//{
+//    uint16_t value = *(uint16_t *)opaque;
+//    visit_type_uint16(v, &value, name, errp);
+//}
 
-static void property_get_uint32_ptr(Object *obj, Visitor *v,
-                                   void *opaque, const char *name,
-                                   Error **errp)
-{
-    uint32_t value = *(uint32_t *)opaque;
-    visit_type_uint32(v, &value, name, errp);
-}
+//static void property_get_uint32_ptr(Object *obj, Visitor *v,
+//                                   void *opaque, const char *name,
+//                                   Error **errp)
+//{
+//    uint32_t value = *(uint32_t *)opaque;
+//    visit_type_uint32(v, &value, name, errp);
+//}
 
-static void property_get_uint64_ptr(Object *obj, Visitor *v,
-                                   void *opaque, const char *name,
-                                   Error **errp)
-{
-    uint64_t value = *(uint64_t *)opaque;
-    visit_type_uint64(v, &value, name, errp);
-}
+//static void property_get_uint64_ptr(Object *obj, Visitor *v,
+//                                   void *opaque, const char *name,
+//                                   Error **errp)
+//{
+//    uint64_t value = *(uint64_t *)opaque;
+//    visit_type_uint64(v, &value, name, errp);
+//}
 
-void object_property_add_uint8_ptr(Object *obj, const char *name,
-                                   const uint8_t *v, Error **errp)
-{
-    object_property_add(obj, name, "uint8", property_get_uint8_ptr,
-                        NULL, NULL, (void *)v, errp);
-}
+//void object_property_add_uint8_ptr(Object *obj, const char *name,
+//                                   const uint8_t *v, Error **errp)
+//{
+//    object_property_add(obj, name, "uint8", property_get_uint8_ptr,
+//                        NULL, NULL, (void *)v, errp);
+//}
 
-void object_property_add_uint16_ptr(Object *obj, const char *name,
-                                    const uint16_t *v, Error **errp)
-{
-    object_property_add(obj, name, "uint16", property_get_uint16_ptr,
-                        NULL, NULL, (void *)v, errp);
-}
+//void object_property_add_uint16_ptr(Object *obj, const char *name,
+//                                    const uint16_t *v, Error **errp)
+//{
+//    object_property_add(obj, name, "uint16", property_get_uint16_ptr,
+//                        NULL, NULL, (void *)v, errp);
+//}
 
-void object_property_add_uint32_ptr(Object *obj, const char *name,
-                                    const uint32_t *v, Error **errp)
-{
-    object_property_add(obj, name, "uint32", property_get_uint32_ptr,
-                        NULL, NULL, (void *)v, errp);
-}
+//void object_property_add_uint32_ptr(Object *obj, const char *name,
+//                                    const uint32_t *v, Error **errp)
+//{
+//    object_property_add(obj, name, "uint32", property_get_uint32_ptr,
+//                        NULL, NULL, (void *)v, errp);
+//}
 
-void object_property_add_uint64_ptr(Object *obj, const char *name,
-                                    const uint64_t *v, Error **errp)
-{
-    object_property_add(obj, name, "uint64", property_get_uint64_ptr,
-                        NULL, NULL, (void *)v, errp);
-}
+//void object_property_add_uint64_ptr(Object *obj, const char *name,
+//                                    const uint64_t *v, Error **errp)
+//{
+//    object_property_add(obj, name, "uint64", property_get_uint64_ptr,
+//                        NULL, NULL, (void *)v, errp);
+//}
 
-static void object_instance_init(Object *obj)
-{
-    object_property_add_str(obj, "type", qdev_get_type, NULL, NULL);
-}
+//static void object_instance_init(Object *obj)
+//{
+//    object_property_add_str(obj, "type", qdev_get_type, NULL, NULL);
+//}
 
-static void register_types(void)
-{
-    static TypeInfo interface_info = {
-        .name = TYPE_INTERFACE,
-        .class_size = sizeof(InterfaceClass),
-        .abstract = true,
-    };
+//static void register_types(void)
+//{
+//    static TypeInfo interface_info = {
+//        .name = TYPE_INTERFACE,
+//        .class_size = sizeof(InterfaceClass),
+//        .abstract = true,
+//    };
 
-    static TypeInfo object_info = {
-        .name = TYPE_OBJECT,
-        .instance_size = sizeof(Object),
-        .instance_init = object_instance_init,
-        .abstract = true,
-    };
+//    static TypeInfo object_info = {
+//        .name = TYPE_OBJECT,
+//        .instance_size = sizeof(Object),
+//        .instance_init = object_instance_init,
+//        .abstract = true,
+//    };
 
-    type_interface = type_register_internal(&interface_info);
-    type_register_internal(&object_info);
-}
+//    type_interface = type_register_internal(&interface_info);
+//    type_register_internal(&object_info);
+//}
 
-type_init(register_types)
+//type_init(register_types)

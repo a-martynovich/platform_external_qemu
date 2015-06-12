@@ -20,6 +20,7 @@
 #include <fcntl.h>
 
 #ifdef _WIN32
+#include <windows.h>
 #include <process.h>
 #include <shlobj.h>
 #include <tlhelp32.h>

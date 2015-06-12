@@ -10,6 +10,11 @@
 ** GNU General Public License for more details.
 */
 
+#ifdef __MINGW32__
+#include <winsock2.h>
+#include <stdint.h>
+#endif
+
 #include "libslirp.h"
 #include "qemu-common.h"
 #include "sysemu/sysemu.h"
@@ -285,7 +290,7 @@ void  android_emulation_setup( void )
 
         // Set up redirect from host to guest system. adbd on the guest listens
         // on 5555.
-        if (legacy_adb) {
+        if (legacy_adb) {            
             slirp_redir( 0, adb_port, guest_ip, 5555 );
         } else {
             adb_server_init(adb_port);
@@ -321,7 +326,7 @@ void  android_emulation_setup( void )
 
             /* setup first redirection for ADB, the Android Debug Bridge */
             adb_port = base_port + 1;
-            if (legacy_adb) {
+            if (legacy_adb) {                
                 if ( slirp_redir( 0, adb_port, guest_ip, 5555 ) < 0 )
                     continue;
             } else {
