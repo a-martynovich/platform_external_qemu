@@ -519,6 +519,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     find_library(OPENGL_LIBRARY OpenGL)
     find_library(CARBON_LIBRARY Carbon)
     find_library(IOKIT_LIBRARY IOKit)
+    find_library(COREADUIO_LIBRARY CoreAudio)
     find_library(COREVIDEO_LIBRARY CoreVideo)
     find_library(QTKIT_LIBRARY QtKit)
     target_compile_definitions(emulator PRIVATE
@@ -534,7 +535,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     )
     target_link_libraries(emulator PRIVATE
         ${COREFOUNDATION_LIBRARY} ${APPSVC_LIBRARY} ${OPENGL_LIBRARY} ${CARBON_LIBRARY} ${IOKIT_LIBRARY} ${COCOA_LIBRARY}
-        ${COREVIDEO_LIBRARY} ${QTKIT_LIBRARY}
+        ${COREVIDEO_LIBRARY} ${COREADUIO_LIBRARY} ${QTKIT_LIBRARY}
         /usr/lib/dylib1.o
     )
     target_sources(emulator PRIVATE
