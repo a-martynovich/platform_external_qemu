@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
+#include <limits.h>
 
 #define DEBUG 0
 

@@ -36,9 +36,12 @@
 
 #ifndef USE_MINGW
 #include <sys/mman.h>
-#define O_BINARY 0
 #else
 #define ftruncate64 ftruncate
+#endif
+
+#ifndef O_BINARY
+# define O_BINARY 0
 #endif
 
 #if defined(__APPLE__) && defined(__MACH__)
