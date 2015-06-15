@@ -57,11 +57,17 @@ gen-hw-config-defs = \
 common_LOCAL_CFLAGS =
 common_LOCAL_SRC_FILES =
 
-EMULATOR_COMMON_CFLAGS :=
+EMULATOR_COMMON_CFLAGS := -Werror=implicit-function-declaration
 
 # Needed by everything about the host
 EMULATOR_COMMON_CFLAGS += \
-    -I$(LOCAL_PATH)/android/config/$(QEMU_HOST_TAG)
+    -I$(LOCAL_PATH)/android/config/$(QEMU_HOST_TAG) \
+    -I$(LOCAL_PATH)/include
+
+# Need to include "qapi-types.h" and other auto-generated files from
+# android-configure.sh
+EMULATOR_COMMON_CFLAGS += -I$(LOCAL_PATH)/qapi-auto-generated
+
 
 # add the build ID to the default macro definitions
 ifeq ($(BUILD_STANDALONE_EMULATOR),)
@@ -84,6 +90,11 @@ ifeq ($(HOST_OS),linux)
 EMULATOR_COMMON_CFLAGS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 endif
 
+ifeq (true,$(BUILD_DEBUG_EMULATOR))
+    EMULATOR_COMMON_CFLAGS += -DENABLE_DLOG=1
+else
+    EMULATOR_COMMON_CFLAGS += -DENABLE_DLOG=0
+endif
 
 ###########################################################
 # Zlib sources
@@ -106,37 +117,62 @@ common_LOCAL_SRC_FILES += \
 	android/android-constants.c \
 	android/async-console.c \
 	android/async-utils.c \
-	android/charmap.c \
 	android/framebuffer.c \
-	android/iolooper-select.c \
-	android/keycode-array.c \
+	android/iolooper.cpp \
 	android/avd/hw-config.c \
 	android/avd/info.c \
+	android/avd/scanner.c \
 	android/avd/util.c \
 	android/sockets.c \
 	android/sync-utils.c \
+	android/base/async/AsyncReader.cpp \
+	android/base/async/AsyncWriter.cpp \
+	android/base/async/Looper.cpp \
+	android/base/async/ThreadLooper.cpp \
 	android/base/containers/PodVector.cpp \
+	android/base/containers/PointerSet.cpp \
+	android/base/containers/HashUtils.cpp \
 	android/base/containers/StringVector.cpp \
 	android/base/files/PathUtils.cpp \
+	android/base/misc/HttpUtils.cpp \
+	android/base/misc/StringUtils.cpp \
+	android/base/misc/Utf8Utils.cpp \
+	android/base/sockets/SocketDrainer.cpp \
+	android/base/sockets/SocketUtils.cpp \
+	android/base/sockets/SocketWaiter.cpp \
+	android/base/synchronization/MessageChannel.cpp \
 	android/base/Log.cpp \
+	android/base/memory/LazyInstance.cpp \
 	android/base/String.cpp \
 	android/base/StringFormat.cpp \
 	android/base/StringView.cpp \
+	android/base/system/System.cpp \
+	android/base/threads/ThreadStore.cpp \
 	android/emulation/CpuAccelerator.cpp \
 	android/filesystems/ext4_utils.cpp \
 	android/filesystems/fstab_parser.cpp \
 	android/filesystems/partition_types.cpp \
 	android/filesystems/ramdisk_extractor.cpp \
 	android/kernel/kernel_utils.cpp \
+	android/qemu/base/async/Looper.cpp \
+	android/looper-base.cpp \
+	android/looper-generic.cpp \
+	android/opengl/EmuglBackendList.cpp \
+	android/opengl/EmuglBackendScanner.cpp \
+	android/opengl/emugl_config.cpp \
+	android/opengl/GpuFrameBridge.cpp \
+	android/utils/aconfig-file.c \
 	android/utils/assert.c \
 	android/utils/bufprint.c \
 	android/utils/debug.c \
 	android/utils/dll.c \
-	android/utils/dirscanner.c \
+	android/utils/dirscanner.cpp \
 	android/utils/eintr_wrapper.c \
 	android/utils/filelock.c \
 	android/utils/file_data.c \
-	android/utils/host_bitness.c \
+	android/utils/format.cpp \
+	android/utils/host_bitness.cpp \
+	android/utils/http_utils.cpp \
 	android/utils/ini.c \
 	android/utils/intmap.c \
 	android/utils/lineinput.c \
@@ -147,20 +183,43 @@ common_LOCAL_SRC_FILES += \
 	android/utils/property_file.c \
 	android/utils/reflist.c \
 	android/utils/refset.c \
+	android/utils/socket_drainer.cpp \
 	android/utils/stralloc.c \
+	android/utils/string.cpp \
 	android/utils/system.c \
 	android/utils/tempfile.c \
+	android/utils/uncompress.cpp \
+	android/utils/utf8_utils.cpp \
 	android/utils/vector.c \
 	android/utils/win32_cmdline_quote.c \
+	android/utils/x86_cpuid.c \
+
+ifeq (windows,$(HOST_OS))
+common_LOCAL_SRC_FILES += \
+    android/base/synchronization/ConditionVariable_win32.cpp \
+    android/base/threads/Thread_win32.cpp \
+
+else
+common_LOCAL_SRC_FILES += \
+    android/base/threads/Thread_pthread.cpp \
+
+endif
+
+
 
 common_LOCAL_CFLAGS += $(EMULATOR_COMMON_CFLAGS)
 
 common_LOCAL_CFLAGS += -I$(LIBEXT4_UTILS_INCLUDES)
 
+include $(LOCAL_PATH)/android/wear-agent/sources.mk
+
 ## one for 32-bit
 $(call start-emulator-library, emulator-common)
 LOCAL_CFLAGS += $(common_LOCAL_CFLAGS)
 LOCAL_SRC_FILES += $(common_LOCAL_SRC_FILES)
+ifeq (32,$(EMULATOR_PROGRAM_BITNESS))
+    LOCAL_IGNORE_BITNESS := true
+endif
 $(call gen-hw-config-defs)
 $(call end-emulator-library)
 
@@ -197,6 +256,10 @@ common_LOCAL_SRC_FILES += $(LIBPNG_SOURCES) android/loadpng.c
 ##############################################################################
 # SDL-related definitions
 #
+
+# Set EMULATOR_USE_SDL2 to 'true' to use SDL 2.x instead of SDL 1.x as
+# the UI library backend.
+EMULATOR_USE_SDL2 ?= true
 
 # Build SDL from sources except in certain cases where we use
 # prebuilt libraries instead.
@@ -248,13 +311,29 @@ else # BUILD_SDL_FROM_SOURCES
     SDL_STATIC_LIBRARIES := emulator_libSDL emulator_libSDLmain emulator_libSDL emulator_libSDLmain
     SDL_STATIC_LIBRARIES_64 := emulator_lib64SDL emulator_lib64SDLmain emulator_lib64SDL emulator_lib64SDLmain
 
-    EMULATOR_LIBUI_CFLAGS += \
-        -I$(LOCAL_PATH)/$(SDL_DIR)/include
+    SDL_INCLUDES := $(LOCAL_PATH)/$(SDL_DIR)/include
 
 endif # BUILD_SDL_FROM_SOURCES
 
-EMULATOR_LIBUI_CFLAGS += $(SDL_CFLAGS)
+SDL2_DIR := distrib/sdl2-2.0.3
+include $(LOCAL_PATH)/$(SDL2_DIR)/sources.make
+
+SDL2_STATIC_LIBRARIES := emulator_libSDL2
+SDL2_STATIC_LIBRARIES_64 := emulator_lib64SDL2
+
+ifeq (true,$(EMULATOR_USE_SDL2))
+EMULATOR_LIBUI_CFLAGS += $(SDL2_CFLAGS) $(foreach inc,$(SDL2_INCLUDES),-I$(inc))
+EMULATOR_LIBUI_LDLIBS += $(SDL2_LDLIBS)
+EMULATOR_SDL_STATIC_LIBRARIES := $(SDL2_STATIC_LIBRARIES)
+EMULATOR_SDL_STATIC_LIBRARIES_64 := $(SDL2_STATIC_LIBRARIES_64)
+EMULATOR_SDL_LDLIBS := $(SDL2_LDLIBS)
+else  # EMULATOR_USE_SDL2 != true
+EMULATOR_LIBUI_CFLAGS += $(SDL_CFLAGS) $(foreach inc,$(SDL_INCLUDES),-I$(inc))
 EMULATOR_LIBUI_LDLIBS += $(SDL_LDLIBS)
+EMULATOR_SDL_STATIC_LIBRARIES := $(SDL_STATIC_LIBRARIES)
+EMULATOR_SDL_STATIC_LIBRARIES_64 := $(SDL_STATIC_LIBRARIES_64)
+EMULATOR_SDL_LDLIBS := $(SDL_LDLIBS)
+endif
 
 # The following is needed by SDL_LoadObject
 ifneq ($(HOST_OS),windows)
@@ -263,25 +342,40 @@ endif
 
 # the skin support sources
 #
-SKIN_SOURCES := rect.c \
+SKIN_SOURCES := charmap.c \
+                rect.c \
                 region.c \
                 image.c \
                 trackball.c \
                 keyboard.c \
+                keycode.c \
+                keycode-buffer.c \
                 keyset.c \
                 file.c \
                 window.c \
+                resource.c \
                 scaler.c \
-                composer.c \
-                surface.c \
+                ui.c \
+
+ifeq (true,$(EMULATOR_USE_SDL2))
+SKIN_SOURCES += event-sdl2.c \
+                surface-sdl2.c \
+                winsys-sdl2.c \
+
+else
+SKIN_SOURCES += event-sdl.c \
+                surface-sdl.c \
+                winsys-sdl.c \
+
+endif
 
 common_LOCAL_SRC_FILES += $(SKIN_SOURCES:%=android/skin/%)
 
 common_LOCAL_SRC_FILES += \
-             android/user-config.c \
+             android/gpu_frame.cpp \
+             android/emulator-window.c \
              android/resource.c \
-             android/qemulator.c \
-             android/keycode.c \
+             android/user-config.c \
 
 # enable MMX code for our skin scaler
 ifeq ($(HOST_ARCH),x86)
@@ -361,16 +455,19 @@ endif
 
 ifeq ($(CONFIG_PULSEAUDIO),yes)
   AUDIO_SOURCES += paaudio.c audio_pt_int.c
+  AUDIO_SOURCES += wrappers/pulse-audio.c
   AUDIO_CFLAGS  += -DCONFIG_PULSEAUDIO
 endif
 
 ifeq ($(CONFIG_ALSA),yes)
   AUDIO_SOURCES += alsaaudio.c audio_pt_int.c
+  AUDIO_SOURCES += wrappers/alsa.c
   AUDIO_CFLAGS  += -DCONFIG_ALSA
 endif
 
 ifeq ($(CONFIG_ESD),yes)
   AUDIO_SOURCES += esdaudio.c
+  AUDIO_SOURCES += wrappers/esound.c
   AUDIO_CFLAGS  += -DCONFIG_ESD
 endif
 
@@ -420,17 +517,18 @@ CORE_MISC_SOURCES = \
     android/boot-properties.c \
     android/cbuffer.c \
     android/charpipe.c \
-    android/config-file.c \
     android/core-init-utils.c   \
     android/gps.c \
     android/hw-kmsg.c \
     android/hw-lcd.c \
     android/hw-events.c \
     android/hw-control.c \
+    android/hw-fingerprint.c \
     android/hw-sensors.c \
     android/hw-qemud.c \
-    android/looper-qemu.c \
+    android/looper-qemu.cpp \
     android/hw-pipe-net.c \
+    android/qemu/base/async/Looper.cpp \
     android/qemu-setup.c \
     android/qemu-tcpdump.c \
     android/shaper.c \

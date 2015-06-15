@@ -23,6 +23,7 @@
 #include "android/cmdline-option.h"
 #include "android/globals.h"
 #include "android/help.h"
+#include "android/filesystems/ext4_utils.h"
 #include "android/kernel/kernel_utils.h"
 #include "android/main-common.h"
 #include "android/utils/bufprint.h"
@@ -82,8 +83,49 @@ static const char kHostOs[] = "darwin";
 static const char kHostOs[] = "windows";
 #endif
 
-// The target CPU architecture.
-const char kTargetArch[] = "aarch64";
+// A structure used to model information about a given target CPU architecture.
+// |androidArch| is the architecture name, following Android conventions.
+// |qemuArch| is the same name, following QEMU conventions, used to locate
+// the final qemu-system-<qemuArch> binary.
+// |qemuCpu| is the QEMU -cpu parameter value.
+// |ttyPrefix| is the prefix to use for TTY devices.
+// |kernelExtraArgs|, if not NULL, is an optional string appended to the kernel
+// parameters.
+struct TargetInfo {
+    const char* androidArch;
+    const char* qemuArch;
+    const char* qemuCpu;
+    const char* ttyPrefix;
+    const char* kernelExtraArgs;
+};
+
+// The current target architecture information!
+const TargetInfo kTarget = {
+#ifdef TARGET_ARM64
+    "arm64",
+    "aarch64",
+    "cortex-a57",
+    "ttyAMA",
+    " keep_bootcon earlyprintk=ttyAMA0",
+#endif
+#ifdef TARGET_MIPS64
+    "mips64",
+    "mips64el",
+    "MIPS64R6-generic",
+    "ttyGF",
+    NULL,
+#endif
+};
+
+String getNthParentDir(const char* path, size_t n) {
+    StringVector dir = PathUtils::decompose(path);
+    PathUtils::simplifyComponents(&dir);
+    if (dir.size() < n + 1U) {
+        return String("");
+    }
+    dir.resize(dir.size() - n);
+    return PathUtils::recompose(dir);
+}
 
 // Return the path of the QEMU executable
 String getQemuExecutablePath(const char* programPath) {
@@ -103,7 +145,7 @@ String getQemuExecutablePath(const char* programPath) {
     path.append(host);
 
     String qemuProgram = "qemu-system-";
-    qemuProgram += kTargetArch;
+    qemuProgram += kTarget.qemuArch;
 #ifdef _WIN32
     qemuProgram += ".exe";
 #endif
@@ -268,15 +310,7 @@ extern "C" int main(int argc, char **argv, char **envp) {
 
     /* Update CPU architecture for HW configs created from build dir. */
     if (inAndroidBuild) {
-#if defined(TARGET_ARM)
-        reassign_string(&android_hw->hw_cpu_arch, "arm");
-#elif defined(TARGET_I386)
-        reassign_string(&android_hw->hw_cpu_arch, "x86");
-#elif defined(TARGET_MIPS)
-        reassign_string(&android_hw->hw_cpu_arch, "mips");
-#elif defined(TARGET_ARM64)
-        reassign_string(&android_hw->hw_cpu_arch, "arm64");
-#endif
+        reassign_string(&android_hw->hw_cpu_arch, kTarget.androidArch);
     }
 
     /* generate arguments for the underlying qemu main() */
@@ -299,17 +333,26 @@ extern "C" int main(int argc, char **argv, char **envp) {
         hw->kernel_path = kernelFile;
     }
 
-    KernelType kernelType = KERNEL_TYPE_LEGACY;
-    if (!android_pathProbeKernelType(hw->kernel_path, &kernelType)) {
-        D("WARNING: Could not determine kernel device naming scheme. Assuming legacy\n"
-            "If this AVD doesn't boot, and uses a recent kernel (3.10 or above) try setting\n"
-            "'kernel.newDeviceNaming' to 'yes' in its configuration.\n");
+    char versionString[256];
+    if (!android_pathProbeKernelVersionString(hw->kernel_path,
+                                              versionString,
+                                              sizeof(versionString))) {
+        derror("Can't find 'Linux version ' string in kernel image file: %s",
+               hw->kernel_path);
+        exit(2);
+    }
+
+    KernelVersion kernelVersion;
+    if (!android_parseLinuxVersionString(versionString, &kernelVersion)) {
+        derror("Can't parse 'Linux version ' string in kernel image file: '%s'",
+               versionString);
+        exit(2);
     }
 
     // Auto-detect kernel device naming scheme if needed.
     if (androidHwConfig_getKernelDeviceNaming(hw) < 0) {
         const char* newDeviceNaming = "no";
-        if (kernelType == KERNEL_TYPE_3_10_OR_ABOVE) {
+        if (kernelVersion >= KERNEL_VERSION_3_10_0) {
             D("Auto-detect: Kernel image requires new device naming scheme.");
             newDeviceNaming = "yes";
         } else {
@@ -640,10 +683,6 @@ extern "C" int main(int argc, char **argv, char **envp) {
     } else {
         int ramSize = hw->hw_ramSize;
         if (ramSize <= 0) {
-#if 1
-            // For ARM64, use 1GB by default.
-            ramSize = 1024 * 1024ULL;
-#else
             /* Compute the default RAM size based on the size of screen.
              * This is only used when the skin doesn't provide the ram
              * size through its hardware.ini (i.e. legacy ones) or when
@@ -666,10 +705,19 @@ extern "C" int main(int argc, char **argv, char **envp) {
                 ramSize = 128;
             else
                 ramSize = 256;
+
+            hw->hw_ramSize = ramSize;
         }
-#endif
-        hw->hw_ramSize = ramSize;
     }
+
+#if 1
+    // For ARM64, ensure a minimum of 1GB or memory, anything lower is
+    // very painful during the boot process and after that.
+    if (hw->hw_ramSize < 1024) {
+        dwarning("Increasing RAM size to 1GB");
+        hw->hw_ramSize = 1024;
+    }
+#endif
 
     D("Physical RAM size: %dMB\n", hw->hw_ramSize);
 
@@ -693,6 +741,38 @@ extern "C" int main(int argc, char **argv, char **envp) {
     String qemuExecutable = getQemuExecutablePath(argv[0]);
     D("QEMU EXECUTABLE=%s\n", qemuExecutable.c_str());
 
+    // Create userdata file from init version if needed.
+    if (!path_exists(hw->disk_dataPartition_path)) {
+        if (!path_exists(hw->disk_dataPartition_initPath)) {
+            derror("Missing initial data partition file: %s",
+                   hw->disk_dataPartition_initPath);
+            exit(1);
+        }
+        D("Creating: %s\n", hw->disk_dataPartition_path);
+
+        if (path_copy_file(hw->disk_dataPartition_path,
+                           hw->disk_dataPartition_initPath) < 0) {
+            derror("Could not create %s: %s", hw->disk_dataPartition_path,
+                   strerror(errno));
+            exit(1);
+        }
+    }
+
+    // Create cache partition image if it doesn't exist already.
+    if (!path_exists(hw->disk_cachePartition_path)) {
+        D("Creating empty ext4 cache partition: %s",
+          hw->disk_cachePartition_path);
+        int ret = android_createEmptyExt4Image(
+                hw->disk_cachePartition_path,
+                hw->disk_cachePartition_size,
+                "cache");
+        if (ret < 0) {
+            derror("Could not create %s: %s", hw->disk_cachePartition_path,
+                   strerror(-ret));
+            exit(1);
+        }
+    }
+
     // Now build the QEMU parameters.
     const char* args[128];
     int n = 0;
@@ -700,7 +780,7 @@ extern "C" int main(int argc, char **argv, char **envp) {
     args[n++] = qemuExecutable.c_str();
 
     args[n++] = "-cpu";
-    args[n++] = "cortex-a57";
+    args[n++] = kTarget.qemuCpu;
     args[n++] = "-machine";
     args[n++] = "type=ranchu";
 
@@ -711,8 +791,12 @@ extern "C" int main(int argc, char **argv, char **envp) {
 
     // Command-line
     args[n++] = "-append";
-    String kernelCommandLine =
-            "console=ttyAMA0,38400 keep_bootcon earlyprintk=ttyAMA0";
+
+    String kernelCommandLine = StringFormat("console=%s0,38400",
+                                            kTarget.ttyPrefix);
+    if (kTarget.kernelExtraArgs) {
+        kernelCommandLine += kTarget.kernelExtraArgs;
+    }
     args[n++] = kernelCommandLine.c_str();
 
     args[n++] = "-serial";
@@ -759,6 +843,18 @@ extern "C" int main(int argc, char **argv, char **envp) {
     args[n++] = "-device";
     args[n++] = "virtio-net-device,netdev=mynet";
     args[n++] = "-show-cursor";
+
+    // Graphics
+    if (opts->no_window) {
+        args[n++] = "-nographic";
+    }
+
+    // Data directory (for keymaps and PC Bios).
+    args[n++] = "-L";
+    String dataDir = getNthParentDir(qemuExecutable.c_str(), 2U);
+    dataDir += "/pc-bios";
+    args[n++] = dataDir.c_str();
+    args[n] = NULL;
 
     if(VERBOSE_CHECK(init)) {
         int i;
@@ -809,7 +905,4 @@ extern "C" int main(int argc, char **argv, char **envp) {
             strerror(errno));
 
     return errno;
-}
-}
-}
 }

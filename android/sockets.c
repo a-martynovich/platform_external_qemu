@@ -21,10 +21,11 @@
 #include "sysemu/char.h"
 #include <stdlib.h>
 #include <string.h>
-#include "android/utils/path.h"
 #include "android/utils/debug.h"
 #include "android/utils/eintr_wrapper.h"
 #include "android/utils/misc.h"
+#include "android/utils/path.h"
+#include "android/utils/socket_drainer.h"
 #include "android/utils/system.h"
 
 #define  D(...) VERBOSE_PRINT(socket,__VA_ARGS__)
@@ -1009,6 +1010,16 @@ socket_recvfrom(int  fd, void*  buf, int  len, SockAddress*  from)
 }
 
 int
+socket_connect_no_sigalrm(int socket, const struct sockaddr *address, socklen_t address_len)
+{
+    int ret;
+    BEGIN_NOSIGALRM
+    ret = connect(socket, address, address_len);
+    END_NOSIGALRM
+    return ret;
+}
+
+int
 socket_connect( int  fd, const SockAddress*  address )
 {
     sockaddr_storage  addr;
@@ -1017,7 +1028,7 @@ socket_connect( int  fd, const SockAddress*  address )
     if (sock_address_to_bsd(address, &addr, &addrlen) < 0)
         return -1;
 
-    SOCKET_CALL(connect(fd,addr.sa,addrlen));
+    SOCKET_CALL(socket_connect_no_sigalrm(fd,addr.sa,addrlen));
 }
 
 int
@@ -1230,56 +1241,11 @@ int socket_init(void)
 
 #endif /* !_WIN32 */
 
-#ifdef _WIN32
-
-static void
-socket_close_handler( void*  _fd )
-{
-    int   fd = (int)_fd;
-    int   ret;
-    char  buff[64];
-
-    /* we want to drain the read side of the socket before closing it */
-    do {
-        ret = recv( fd, buff, sizeof(buff), 0 );
-    } while (ret < 0 && WSAGetLastError() == WSAEINTR);
-
-    if (ret < 0 && WSAGetLastError() == EWOULDBLOCK)
-        return;
-
-    qemu_set_fd_handler( fd, NULL, NULL, NULL );
-    closesocket( fd );
-}
 
 void
-socket_close( int  fd )
-{
-    int  old_errno = errno;
-
-    shutdown( fd, SD_BOTH );
-    /* we want to drain the socket before closing it */
-    qemu_set_fd_handler( fd, socket_close_handler, NULL, (void*)fd );
-
-    errno = old_errno;
+socket_close( int  fd ) {
+    socket_drainer_drain_and_close(fd);
 }
-
-#else /* !_WIN32 */
-
-#include <unistd.h>
-
-void
-socket_close( int  fd )
-{
-    int  old_errno = errno;
-
-    shutdown( fd, SHUT_RDWR );
-    IGNORE_EINTR(close( fd ));
-
-    errno = old_errno;
-}
-
-#endif /* !_WIN32 */
-
 
 static int
 socket_bind_server( int  s, const SockAddress*  to, SocketType  type )

@@ -46,6 +46,7 @@ struct r4k_tlb_t {
 typedef struct CPUMIPSTLBContext CPUMIPSTLBContext;
 struct CPUMIPSTLBContext {
     uint32_t nb_tlb;
+    uint32_t tlb_in_use;
     int (*map_address) (struct CPUMIPSState *env, hwaddr *physical, int *prot, target_ulong address, int rw, int access_type);
     void (*helper_tlbwi)(struct CPUMIPSState *env);
     void (*helper_tlbwr)(struct CPUMIPSState *env);
@@ -234,6 +235,11 @@ struct CPUMIPSState {
 #define CP0VPEOpt_DWX0	0
     target_ulong CP0_EntryLo0;
     target_ulong CP0_EntryLo1;
+#define CP0EnLo_PFN  6
+#define CP0EnLo_C    3
+#define CP0EnLo_D    2
+#define CP0EnLo_V    1
+#define CP0EnLo_G    0
     target_ulong CP0_Context;
     int32_t CP0_PageMask;
     int32_t CP0_PageGrain;
@@ -653,6 +659,7 @@ int cpu_mips_handle_mmu_fault (CPUMIPSState *env, target_ulong address, int rw,
                                int mmu_idx);
 #define cpu_handle_mmu_fault cpu_mips_handle_mmu_fault
 void do_interrupt (CPUMIPSState *env);
+void r4k_invalidate_tlb (CPUMIPSState *env, int idx, int use_extra);
 hwaddr cpu_mips_translate_address (CPUMIPSState *env, target_ulong address,
 		                               int rw);
 

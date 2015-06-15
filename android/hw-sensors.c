@@ -432,7 +432,7 @@ _hwSensorClient_receive( HwSensorClient*  cl, uint8_t*  msg, int  msglen )
         else
             cl->enabledMask &= ~(1 << id);
 
-        if (cl->enabledMask != oldEnabledMask) {
+        if (cl->enabledMask != (uint32_t)oldEnabledMask) {
             D("%s: %s %s sensor", __FUNCTION__,
                 (cl->enabledMask & (1 << id))  ? "enabling" : "disabling",  msg);
         }
@@ -568,7 +568,7 @@ _hwSensors_load( QEMUFile*  f, QemudService*  s, void*  opaque)
 
     /* load sensor state */
     AndroidSensor i;
-    for (i = 0 ; i < num_sensors; i++) {
+    for (i = 0 ; i < (AndroidSensor)num_sensors; i++) {
         Sensor* s = &h->sensors[i];
         s->enabled = qemu_get_be32(f);
 
@@ -661,13 +661,7 @@ _hwSensors_setCoarseOrientation( HwSensors*  h, AndroidCoarseOrientation  orient
 static void
 _hwSensors_init( HwSensors*  h )
 {
-    /* Try to see if there is a device attached that can be used for
-     * sensor emulation. */
-    h->sensors_port = sensors_port_create(h);
-    if (h->sensors_port == NULL) {
-        V("Realistic sensor emulation is not available, since the remote controller is not accessible:\n %s",
-          strerror(errno));
-    }
+    h->sensors_port = NULL;
 
     h->service = qemud_service_register("sensors", 0, h, _hwSensors_connect,
                                         _hwSensors_save, _hwSensors_load);
@@ -709,6 +703,21 @@ android_hw_sensors_init( void )
     if (hw->service == NULL) {
         _hwSensors_init(hw);
         D("%s: sensors qemud service initialized", __FUNCTION__);
+    }
+}
+
+void
+android_hw_sensors_init_remote_controller(void) {
+    HwSensors* hw = _sensorsState;
+
+    if (!hw->sensors_port) {
+        /* Try to see if there is a device attached that can be used for
+        * sensor emulation. */
+        hw->sensors_port = sensors_port_create(hw);
+        if (hw->sensors_port == NULL) {
+            V("Realistic sensor emulation is not available, since the remote controller is not accessible:\n %s",
+            strerror(errno));
+        }
     }
 }
 

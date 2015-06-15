@@ -25,6 +25,7 @@
 #include <inttypes.h>
 
 #include "cpu.h"
+#include "exec/code-profile.h"
 #include "exec/exec-all.h"
 #include "disas/disas.h"
 #include "tcg-op.h"
@@ -802,12 +803,14 @@ static inline TCGv gen_ld32(TCGv addr, int index)
     tcg_gen_qemu_ld32u(tmp, addr, index);
     return tmp;
 }
+#if 0
 static inline TCGv_i64 gen_ld64(TCGv addr, int index)
 {
     TCGv_i64 tmp = tcg_temp_new_i64();
     tcg_gen_qemu_ld64(tmp, addr, index);
     return tmp;
 }
+#endif
 static inline void gen_st8(TCGv val, TCGv addr, int index)
 {
     tcg_gen_qemu_st8(val, addr, index);
@@ -823,11 +826,13 @@ static inline void gen_st32(TCGv val, TCGv addr, int index)
     tcg_gen_qemu_st32(val, addr, index);
     tcg_temp_free_i32(val);
 }
+#if 0
 static inline void gen_st64(TCGv_i64 val, TCGv addr, int index)
 {
     tcg_gen_qemu_st64(val, addr, index);
     tcg_temp_free_i64(val);
 }
+#endif
 
 static inline void gen_set_pc_im(uint32_t val)
 {
@@ -1273,7 +1278,7 @@ IWMMXT_OP_ENV(avgb1)
 IWMMXT_OP_ENV(avgw0)
 IWMMXT_OP_ENV(avgw1)
 
-IWMMXT_OP(msadb)
+// IWMMXT_OP(msadb)
 
 IWMMXT_OP_ENV(packuw)
 IWMMXT_OP_ENV(packul)
@@ -9681,6 +9686,24 @@ undef:
     gen_exception_insn(s, 2, EXCP_UDEF);
 }
 
+static void
+gen_profileBB(void * tb)
+{
+#if HOST_LONG_BITS == 32
+    TCGv_i32  tmpTb  = tcg_temp_new_i32();
+
+    tcg_gen_movi_i32(tmpTb,  (int32_t)tb);
+    gen_helper_profileBB(tmpTb);
+    tcg_temp_free_i32(tmpTb);
+#elif HOST_LONG_BITS == 64
+    TCGv_i64  tmpTb  = tcg_temp_new_i64();
+
+    tcg_gen_movi_i64(tmpTb,  (int64_t)tb);
+    gen_helper_profileBB(tmpTb);
+    tcg_temp_free_i64(tmpTb);
+#endif
+}
+
 /* generate intermediate code in gen_opc_buf and gen_opparam_buf for
    basic block 'tb'. If search_pc is TRUE, also generate PC
    information for each intermediate instruction. */
@@ -9733,6 +9756,9 @@ static inline void gen_intermediate_code_internal(CPUARMState *env,
         max_insns = CF_COUNT_MASK;
 
     gen_icount_start();
+
+    if (code_profile_record_func != NULL && code_profile_dirname != NULL)
+        gen_profileBB(tb);
 
     tcg_clear_temp_count();
 

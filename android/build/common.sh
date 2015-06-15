@@ -16,6 +16,7 @@
 # It contains common definitions.
 #
 PROGNAME=`basename $0`
+PROGDIR=`dirname $0`
 
 ## Logging support
 ##
@@ -153,6 +154,8 @@ compute_host_tag
 #### Toolchain support
 ####
 
+WINDRES=
+
 # Various probes are going to need to run a small C program
 TMPC=/tmp/android-$$-test.c
 TMPO=/tmp/android-$$-test.o
@@ -203,29 +206,28 @@ enable_linux_mingw ()
         echo "Sorry, but mingw compilation is only supported on Linux !"
         exit 1
     fi
-    # Do we have the binaries installed
-    log "Mingw64    : Checking for mingw64 installation"
-    MINGW64_PREFIX=x86_64-w64-mingw32
-    find_program MINGW64_CC $MINGW64_PREFIX-gcc
-    if [ -n "$MINGW64_CC" ]; then
-        MINGW_CC=$MINGW64_CC
-        MINGW_PREFIX=$MINGW64_PREFIX
-    else
-    log "Mingw      : Checking for mingw32 installation"
-    MINGW32_PREFIX=i586-mingw32msvc
-    find_program MINGW32_CC $MINGW32_PREFIX-gcc
-    if [ -z "$MINGW32_CC" ] ; then
-            echo "ERROR: It looks like neither $MINGW64_PREFIX-cc nor $MINGW32_PREFIX-gcc"
-            echo "are in your path. Please install the mingw32 package !"
-        exit 1
-        fi
-        MINGW_CC=$MINGW32_CC
-        MINGW_PREFIX=$MINGW32_PREFIX
-        FORCE_32BIT=no
+    # Do we have our prebuilt mingw64 toolchain?
+    log "Mingw      : Looking for prebuilt mingw64 toolchain."
+    MINGW_DIR=$PROGDIR/../../prebuilts/gcc/linux-x86/host/x86_64-w64-mingw32-4.8
+    MINGW_CC=
+    if [ -d "$MINGW_DIR" ]; then
+        MINGW_PREFIX=$MINGW_DIR/bin/x86_64-w64-mingw32
+        find_program MINGW_CC "$MINGW_PREFIX-gcc"
     fi
-    log2 "Mingw      : Found $MINGW32_CC"
+    if [ -z "$MINGW_CC" ]; then
+        log "Mingw      : Looking for mingw64 toolchain."
+        MINGW_PREFIX=x86_64-w64-mingw32
+        find_program MINGW_CC $MINGW_PREFIX-gcc
+    fi
+    if [ -z "$MINGW_CC" ]; then
+        echo "ERROR: It looks like no Mingw64 toolchain is available!"
+        echo "Please install x86_64-w64-mingw32 package !"
+        exit 1
+    fi
+    log2 "Mingw      : Found $MINGW_CC"
     CC=$MINGW_CC
     LD=$MINGW_CC
+    WINDRES=$MINGW_PREFIX-windres
     AR=$MINGW_PREFIX-ar
 }
 
@@ -284,6 +286,8 @@ EOF
         clean_exit
     fi
     log "CC         : compiler check ok ($CC)"
+    CC_VER=`$CC --version`
+    log "CC_VER     : $CC_VER"
 
     # check that we can link the trivial program into an executable
     if [ -z "$LD" ] ; then
@@ -571,6 +575,7 @@ create_config_mk ()
     echo "HOST_CC     := $CC" >> $config_mk
     echo "HOST_LD     := $LD" >> $config_mk
     echo "HOST_AR     := $AR" >> $config_mk
+    echo "HOST_WINDRES:= $WINDRES" >> $config_mk
     echo "OBJS_DIR    := $out_dir" >> $config_mk
 }
 
@@ -615,7 +620,7 @@ pattern_match ()
 find_program ()
 {
     local PROG
-    PROG=`which $2 2>/dev/null`
+    PROG=`which $2 2>/dev/null || true`
     if [ -n "$PROG" ] ; then
         if pattern_match '^no ' "$PROG"; then
             PROG=

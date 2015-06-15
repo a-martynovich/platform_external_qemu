@@ -23,9 +23,9 @@
  */
 #include "hw/hw.h"
 #include "hw/i386/pc.h"
-#include "hw/block/fdc.h"
 #include "hw/loader.h"
 #include "hw/pci/pci.h"
+#include "exec/ram_addr.h"
 #include "block/block.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/blockdev.h"
@@ -767,9 +767,11 @@ static void main_cpu_reset(void *opaque)
     cpu_reset(ENV_GET_CPU(env));
 }
 
+#ifndef CONFIG_ANDROID
 static const int ide_iobase[2] = { 0x1f0, 0x170 };
 static const int ide_iobase2[2] = { 0x3f6, 0x376 };
 static const int ide_irq[2] = { 14, 15 };
+#endif
 
 #define NE2000_NB_MAX 6
 
@@ -950,7 +952,7 @@ static void pc_init1(ram_addr_t ram_size,
 #if TARGET_PHYS_ADDR_BITS == 32
         hw_error("To much RAM for 32-bit physical address");
 #else
-        ram_addr = qemu_ram_alloc(above_4g_mem_size);
+        ram_addr = qemu_ram_alloc(NULL, "pc.ram.high", above_4g_mem_size);
         cpu_register_physical_memory(0x100000000ULL,
                                      above_4g_mem_size,
                                      ram_addr);

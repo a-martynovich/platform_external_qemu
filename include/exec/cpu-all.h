@@ -361,9 +361,6 @@ void page_set_flags(target_ulong start, target_ulong end, int flags);
 int page_check_range(target_ulong start, target_ulong len, int flags);
 #endif
 
-void QEMU_NORETURN cpu_abort(CPUArchState *env, const char *fmt, ...)
-    GCC_FMT_ATTR(2, 3);
-
 /* Flags for use in ENV->INTERRUPT_PENDING.
 
    The numbers assigned here are non-sequential in order to preserve
@@ -423,6 +420,10 @@ void QEMU_NORETURN cpu_abort(CPUArchState *env, const char *fmt, ...)
 #define BP_GDB                0x10
 #define BP_CPU                0x20
 
+// several functions below depend on cpu.h
+// cpu.h depends on CPU_INTERRUPT_* definitions (above)
+#include "cpu.h"
+
 int cpu_breakpoint_insert(CPUArchState *env, target_ulong pc, int flags,
                           CPUBreakpoint **breakpoint);
 int cpu_breakpoint_remove(CPUArchState *env, target_ulong pc, int flags);
@@ -439,7 +440,11 @@ void cpu_watchpoint_remove_all(CPUArchState *env, int mask);
 #define SSTEP_NOIRQ   0x2  /* Do not use IRQ while single stepping */
 #define SSTEP_NOTIMER 0x4  /* Do not Timers while single stepping */
 
+void QEMU_NORETURN cpu_abort(CPUArchState *env, const char *fmt, ...)
+GCC_FMT_ATTR(2, 3);
+
 void cpu_single_step(CPUState *cpu, int enabled);
+
 
 /* IO ports API */
 #include "exec/ioport.h"
@@ -470,9 +475,14 @@ typedef struct RAMBlock {
     int fd;
 } RAMBlock;
 
+#define DIRTY_MEMORY_VGA       0
+#define DIRTY_MEMORY_CODE      1
+#define DIRTY_MEMORY_MIGRATION 2
+#define DIRTY_MEMORY_NUM       3        /* num of dirty bits */
+
 typedef struct RAMList {
     QemuMutex mutex;
-    uint8_t *phys_dirty;
+    unsigned long *dirty_memory[DIRTY_MEMORY_NUM];
     RAMBlock *mru_block;
     QTAILQ_HEAD(ram, RAMBlock) blocks;
     uint32_t version;
@@ -498,59 +508,7 @@ extern int mem_prealloc;
 #define CODE_DIRTY_FLAG      0x02
 #define MIGRATION_DIRTY_FLAG 0x08
 
-/* read dirty bit (return 0 or 1) */
-static inline int cpu_physical_memory_is_dirty(ram_addr_t addr)
-{
-    return ram_list.phys_dirty[addr >> TARGET_PAGE_BITS] == 0xff;
-}
-
-static inline int cpu_physical_memory_get_dirty_flags(ram_addr_t addr)
-{
-    return ram_list.phys_dirty[addr >> TARGET_PAGE_BITS];
-}
-
-static inline int cpu_physical_memory_get_dirty(ram_addr_t addr,
-                                                int dirty_flags)
-{
-    return ram_list.phys_dirty[addr >> TARGET_PAGE_BITS] & dirty_flags;
-}
-
-static inline void cpu_physical_memory_set_dirty(ram_addr_t addr)
-{
-    ram_list.phys_dirty[addr >> TARGET_PAGE_BITS] = 0xff;
-}
-
-static inline int cpu_physical_memory_set_dirty_flags(ram_addr_t addr,
-                                                      int dirty_flags)
-{
-    return ram_list.phys_dirty[addr >> TARGET_PAGE_BITS] |= dirty_flags;
-}
-
-static inline void cpu_physical_memory_mask_dirty_range(ram_addr_t start,
-                                                        int length,
-                                                        int dirty_flags)
-{
-    int i, mask, len;
-    uint8_t *p;
-
-    len = length >> TARGET_PAGE_BITS;
-    mask = ~dirty_flags;
-    p = ram_list.phys_dirty + (start >> TARGET_PAGE_BITS);
-    for (i = 0; i < len; i++) {
-        p[i] &= mask;
-    }
-}
-
-void cpu_physical_memory_reset_dirty(ram_addr_t start, ram_addr_t end,
-                                     int dirty_flags);
 void cpu_tlb_update_dirty(CPUArchState *env);
-
-int cpu_physical_memory_set_dirty_tracking(int enable);
-
-int cpu_physical_memory_get_dirty_tracking(void);
-
-int cpu_physical_sync_dirty_bitmap(hwaddr start_addr,
-                                   hwaddr end_addr);
 
 void dump_exec_info(FILE *f,
                     int (*cpu_fprintf)(FILE *f, const char *fmt, ...));
@@ -565,7 +523,6 @@ void qemu_register_coalesced_mmio(hwaddr addr, ram_addr_t size);
 void qemu_unregister_coalesced_mmio(hwaddr addr, ram_addr_t size);
 
 void qemu_flush_coalesced_mmio_buffer(void);
-
 
 /* profiling */
 #ifdef CONFIG_PROFILER

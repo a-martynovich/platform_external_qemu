@@ -35,7 +35,9 @@
 #include "android/utils/bufprint.h"
 #include "android/utils/debug.h"
 #include "android/utils/eintr_wrapper.h"
+#include "android/utils/http_utils.h"
 #include "android/utils/stralloc.h"
+#include "android/utils/utf8_utils.h"
 #include "android/config/config.h"
 #include "android/tcpdump.h"
 #include "net/net.h"
@@ -49,9 +51,10 @@
 #include <fcntl.h>
 #include "android/hw-events.h"
 #include "android/user-events.h"
+#include "android/hw-fingerprint.h"
 #include "android/hw-sensors.h"
-#include "android/keycode-array.h"
-#include "android/charmap.h"
+#include "android/skin/charmap.h"
+#include "android/skin/keycode-buffer.h"
 #include "android/display-core.h"
 
 #if defined(CONFIG_SLIRP)
@@ -403,6 +406,8 @@ dump_help( ControlClient  client,
     }
 }
 
+static int do_quit(ControlClient client, char* args);  // forward
+
 static void
 control_client_do_command( ControlClient  client )
 {
@@ -413,7 +418,16 @@ control_client_do_command( ControlClient  client )
     CommandDef  cmd      = find_command( line, commands, &cmdend, &args );
 
     if (cmd == NULL) {
-        control_write( client, "KO: unknown command, try 'help'\r\n" );
+        size_t line_len = strlen(line);
+        if (android_http_is_request_line(line, line_len)) {
+            control_write( client, "KO: Forbidden HTTP request. Aborting\r\n");
+            do_quit(client, NULL);
+        } else  if (!android_utf8_is_valid(line, line_len)) {
+            control_write( client, "KO: Forbidden binary request. Aborting\r\n");
+            do_quit(client, NULL);
+        } else {
+            control_write( client, "KO: unknown command, try 'help'\r\n" );
+        }
         return;
     }
 
@@ -1494,6 +1508,7 @@ static const CommandDefRec  cdma_commands[] =
     { "prl_version", "Dump the current PRL version",
       NULL, NULL,
       do_cdma_prl_version, NULL },
+    { NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
 static const CommandDefRec  gsm_commands[] =
@@ -1957,11 +1972,11 @@ utf8_next( unsigned char* *pp, unsigned char*  end )
 static int
 do_event_text( ControlClient  client, char*  args )
 {
-    AKeycodeBuffer keycodes;
+    SkinKeycodeBuffer keycodes;
     unsigned char*  p   = (unsigned char*) args;
     unsigned char*  end = p + strlen(args);
     int             textlen;
-    const AKeyCharmap* charmap;
+    const SkinCharmap* charmap;
 
     if (!args) {
         control_write( client, "KO: argument missing, try 'event text <message>'\r\n" );
@@ -1969,13 +1984,13 @@ do_event_text( ControlClient  client, char*  args )
     }
 
     /* Get active charmap. */
-    charmap = android_get_charmap();
+    charmap = skin_charmap_get();
     if (charmap == NULL) {
         control_write( client, "KO: no character map active in current device layout/config\r\n" );
         return -1;
     }
 
-    keycodes.keycode_count = 0;
+    skin_keycode_buffer_init(&keycodes, &user_event_keycodes);
 
     /* un-secape message text into proper utf-8 (conversion happens in-site) */
     textlen = strlen((char*)p);
@@ -1997,9 +2012,9 @@ do_event_text( ControlClient  client, char*  args )
         if (c <= 0)
             break;
 
-        android_charmap_reverse_map_unicode( NULL, (unsigned)c, 1, &keycodes );
-        android_charmap_reverse_map_unicode( NULL, (unsigned)c, 0, &keycodes );
-        android_keycodes_flush( &keycodes );
+        skin_charmap_reverse_map_unicode( NULL, (unsigned)c, 1, &keycodes );
+        skin_charmap_reverse_map_unicode( NULL, (unsigned)c, 0, &keycodes );
+        skin_keycode_buffer_flush( &keycodes );
     }
 
     return 0;
@@ -2583,6 +2598,49 @@ static const CommandDefRec sensor_commands[] =
 /********************************************************************************************/
 /********************************************************************************************/
 /*****                                                                                 ******/
+/*****                        F I N G E R P R I N T  C O M M A N D S                   ******/
+/*****                                                                                 ******/
+/********************************************************************************************/
+/********************************************************************************************/
+
+static int
+do_fingerprint_touch(ControlClient client, char* args )
+{
+    if (args) {
+        char *endptr;
+        int fingerid = strtol(args, &endptr, 0);
+        if (endptr != args) {
+            android_hw_fingerprint_touch(fingerid);
+            return 0;
+        }
+        control_write(client, "KO: invalid fingerid\r\n");
+        return -1;
+    }
+    control_write(client, "KO: missing fingerid\r\n");
+    return -1;
+}
+
+static int
+do_fingerprint_remove(ControlClient client, char* args )
+{
+    android_hw_fingerprint_remove();
+    return 0;
+}
+
+static const CommandDefRec fingerprint_commands[] =
+{
+    { "touch", "touch finger print sensor with <fingerid>",
+      "'touch <fingerid>' touch finger print sensor with <fingerid>.\r\n",
+      NULL, do_fingerprint_touch, NULL },
+    { "remove", "remove finger from the fingerprint sensor",
+      "'remove' remove finger from the fingerprint sensor.\r\n",
+      NULL, do_fingerprint_remove, NULL },
+    { NULL, NULL, NULL, NULL, NULL, NULL }
+};
+
+/********************************************************************************************/
+/********************************************************************************************/
+/*****                                                                                 ******/
 /*****                           M A I N   C O M M A N D S                             ******/
 /*****                                                                                 ******/
 /********************************************************************************************/
@@ -2942,6 +3000,10 @@ static const CommandDefRec   main_commands[] =
     { "sensor", "manage emulator sensors",
       "allows you to request the emulator sensors\r\n", NULL,
       NULL, sensor_commands },
+
+    { "finger", "manage emulator finger print",
+      "allows you to touch the emulator finger print sensor\r\n", NULL,
+      NULL, fingerprint_commands},
 
     { NULL, NULL, NULL, NULL, NULL, NULL }
 };

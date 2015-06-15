@@ -415,56 +415,6 @@ HELPER_ST_ATOMIC(scd, ld, sd, 0x7)
 #define GET_OFFSET(addr, offset) (addr - (offset))
 #endif
 
-target_ulong helper_lwl(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
-                        int mem_idx)
-{
-    target_ulong tmp;
-
-    tmp = do_lbu(env, arg2, mem_idx);
-    arg1 = (arg1 & 0x00FFFFFF) | (tmp << 24);
-
-    if (GET_LMASK(arg2) <= 2) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 1), mem_idx);
-        arg1 = (arg1 & 0xFF00FFFF) | (tmp << 16);
-    }
-
-    if (GET_LMASK(arg2) <= 1) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 2), mem_idx);
-        arg1 = (arg1 & 0xFFFF00FF) | (tmp << 8);
-    }
-
-    if (GET_LMASK(arg2) == 0) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 3), mem_idx);
-        arg1 = (arg1 & 0xFFFFFF00) | tmp;
-    }
-    return (int32_t)arg1;
-}
-
-target_ulong helper_lwr(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
-                        int mem_idx)
-{
-    target_ulong tmp;
-
-    tmp = do_lbu(env, arg2, mem_idx);
-    arg1 = (arg1 & 0xFFFFFF00) | tmp;
-
-    if (GET_LMASK(arg2) >= 1) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -1), mem_idx);
-        arg1 = (arg1 & 0xFFFF00FF) | (tmp << 8);
-    }
-
-    if (GET_LMASK(arg2) >= 2) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -2), mem_idx);
-        arg1 = (arg1 & 0xFF00FFFF) | (tmp << 16);
-    }
-
-    if (GET_LMASK(arg2) == 3) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -3), mem_idx);
-        arg1 = (arg1 & 0x00FFFFFF) | (tmp << 24);
-    }
-    return (int32_t)arg1;
-}
-
 void helper_swl(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
                 int mem_idx)
 {
@@ -504,98 +454,6 @@ void helper_swr(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
 #else
 #define GET_LMASK64(v) (((v) & 7) ^ 7)
 #endif
-
-target_ulong helper_ldl(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
-                        int mem_idx)
-{
-    uint64_t tmp;
-
-    tmp = do_lbu(env, arg2, mem_idx);
-    arg1 = (arg1 & 0x00FFFFFFFFFFFFFFULL) | (tmp << 56);
-
-    if (GET_LMASK64(arg2) <= 6) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 1), mem_idx);
-        arg1 = (arg1 & 0xFF00FFFFFFFFFFFFULL) | (tmp << 48);
-    }
-
-    if (GET_LMASK64(arg2) <= 5) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 2), mem_idx);
-        arg1 = (arg1 & 0xFFFF00FFFFFFFFFFULL) | (tmp << 40);
-    }
-
-    if (GET_LMASK64(arg2) <= 4) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 3), mem_idx);
-        arg1 = (arg1 & 0xFFFFFF00FFFFFFFFULL) | (tmp << 32);
-    }
-
-    if (GET_LMASK64(arg2) <= 3) {
-        tmp = do_lbu(GET_OFFSET(arg2, 4), mem_idx);
-        arg1 = (arg1 & 0xFFFFFFFF00FFFFFFULL) | (tmp << 24);
-    }
-
-    if (GET_LMASK64(arg2) <= 2) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 5), mem_idx);
-        arg1 = (arg1 & 0xFFFFFFFFFF00FFFFULL) | (tmp << 16);
-    }
-
-    if (GET_LMASK64(arg2) <= 1) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 6), mem_idx);
-        arg1 = (arg1 & 0xFFFFFFFFFFFF00FFULL) | (tmp << 8);
-    }
-
-    if (GET_LMASK64(arg2) == 0) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, 7), mem_idx);
-        arg1 = (arg1 & 0xFFFFFFFFFFFFFF00ULL) | tmp;
-    }
-
-    return arg1;
-}
-
-target_ulong helper_ldr(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
-                        int mem_idx)
-{
-    uint64_t tmp;
-
-    tmp = do_lbu(env, arg2, mem_idx);
-    arg1 = (arg1 & 0xFFFFFFFFFFFFFF00ULL) | tmp;
-
-    if (GET_LMASK64(arg2) >= 1) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -1), mem_idx);
-        arg1 = (arg1 & 0xFFFFFFFFFFFF00FFULL) | (tmp  << 8);
-    }
-
-    if (GET_LMASK64(arg2) >= 2) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -2), mem_idx);
-        arg1 = (arg1 & 0xFFFFFFFFFF00FFFFULL) | (tmp << 16);
-    }
-
-    if (GET_LMASK64(arg2) >= 3) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -3), mem_idx);
-        arg1 = (arg1 & 0xFFFFFFFF00FFFFFFULL) | (tmp << 24);
-    }
-
-    if (GET_LMASK64(arg2) >= 4) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -4), mem_idx);
-        arg1 = (arg1 & 0xFFFFFF00FFFFFFFFULL) | (tmp << 32);
-    }
-
-    if (GET_LMASK64(arg2) >= 5) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -5), mem_idx);
-        arg1 = (arg1 & 0xFFFF00FFFFFFFFFFULL) | (tmp << 40);
-    }
-
-    if (GET_LMASK64(arg2) >= 6) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -6), mem_idx);
-        arg1 = (arg1 & 0xFF00FFFFFFFFFFFFULL) | (tmp << 48);
-    }
-
-    if (GET_LMASK64(arg2) == 7) {
-        tmp = do_lbu(env, GET_OFFSET(arg2, -7), mem_idx);
-        arg1 = (arg1 & 0x00FFFFFFFFFFFFFFULL) | (tmp << 56);
-    }
-
-    return arg1;
-}
 
 void helper_sdl(CPUMIPSState *env, target_ulong arg1, target_ulong arg2,
                  int mem_idx)
@@ -1693,69 +1551,20 @@ target_ulong helper_yield(CPUMIPSState *env, target_ulong arg)
 }
 
 #ifndef CONFIG_USER_ONLY
-static void inline r4k_invalidate_tlb_shadow (CPUMIPSState *env, int idx)
-{
-    r4k_tlb_t *tlb;
-    uint8_t ASID = env->CP0_EntryHi & 0xFF;
-
-    tlb = &env->tlb->mmu.r4k.tlb[idx];
-    /* The qemu TLB is flushed when the ASID changes, so no need to
-    flush these entries again.  */
-    if (tlb->G == 0 && tlb->ASID != ASID) {
-        return;
-    }
-}
-
-static void inline r4k_invalidate_tlb (CPUMIPSState *env, int idx)
-{
-    r4k_tlb_t *tlb;
-    target_ulong addr;
-    target_ulong end;
-    uint8_t ASID = env->CP0_EntryHi & 0xFF;
-    target_ulong mask;
-
-    tlb = &env->tlb->mmu.r4k.tlb[idx];
-    /* The qemu TLB is flushed when the ASID changes, so no need to
-    flush these entries again.  */
-    if (tlb->G == 0 && tlb->ASID != ASID) {
-        return;
-    }
-
-    /* 1k pages are not supported. */
-    mask = tlb->PageMask | ~(TARGET_PAGE_MASK << 1);
-    if (tlb->V0) {
-        addr = tlb->VPN & ~mask;
-#if defined(TARGET_MIPS64)
-        if (addr >= (0xFFFFFFFF80000000ULL & env->SEGMask)) {
-            addr |= 0x3FFFFF0000000000ULL;
-        }
-#endif
-        end = addr | (mask >> 1);
-        while (addr < end) {
-            tlb_flush_page (env, addr);
-            addr += TARGET_PAGE_SIZE;
-        }
-    }
-    if (tlb->V1) {
-        addr = (tlb->VPN & ~mask) | ((mask >> 1) + 1);
-#if defined(TARGET_MIPS64)
-        if (addr >= (0xFFFFFFFF80000000ULL & env->SEGMask)) {
-            addr |= 0x3FFFFF0000000000ULL;
-        }
-#endif
-        end = addr | mask;
-        while (addr - 1 < end) {
-            tlb_flush_page (env, addr);
-            addr += TARGET_PAGE_SIZE;
-        }
-    }
-}
-
 /* TLB management */
-void cpu_mips_tlb_flush (CPUMIPSState *env, int flush_global)
+static void cpu_mips_tlb_flush (CPUMIPSState *env, int flush_global)
 {
     /* Flush qemu's TLB and discard all shadowed entries.  */
-    tlb_flush (env, flush_global);
+    tlb_flush(env, flush_global);
+    env->tlb->tlb_in_use = env->tlb->nb_tlb;
+}
+
+static void r4k_mips_tlb_flush_extra (CPUMIPSState *env, int first)
+{
+    /* Discard entries from env->tlb[first] onwards.  */
+    while (env->tlb->tlb_in_use > first) {
+        r4k_invalidate_tlb(env, --env->tlb->tlb_in_use, 0);
+    }
 }
 
 static void r4k_fill_tlb(CPUMIPSState *env, int idx)
@@ -1781,56 +1590,44 @@ static void r4k_fill_tlb(CPUMIPSState *env, int idx)
     tlb->PFN[1] = (env->CP0_EntryLo1 >> 6) << 12;
 }
 
-void r4k_helper_ptw_tlbrefill(CPUMIPSState *env)
-{
-   /* Do TLB load on behalf of Page Table Walk */
-    int r = cpu_mips_get_random(env);
-    r4k_invalidate_tlb_shadow(env, r);
-    r4k_fill_tlb(env, r);
-}
-
-void r4k_helper_tlbwi (CPUMIPSState *env)
+void r4k_helper_tlbwi(CPUMIPSState *env)
 {
     r4k_tlb_t *tlb;
-    target_ulong tag;
+    int idx;
     target_ulong VPN;
-    target_ulong mask;
+    uint8_t ASID;
+    bool G, V0, D0, V1, D1;
 
-    /* If tlbwi is trying to upgrading access permissions on current entry,
-     * we do not need to flush tlb hash table.
-     */
-    tlb = &env->tlb->mmu.r4k.tlb[env->CP0_Index % env->tlb->nb_tlb];
-    mask = tlb->PageMask | ~(TARGET_PAGE_MASK << 1);
-    tag = env->CP0_EntryHi & ~mask;
-    VPN = tlb->VPN & ~mask;
-    if (VPN == tag)
-    {
-        if (tlb->ASID == (env->CP0_EntryHi & 0xFF))
-        {
-            tlb->V0 = (env->CP0_EntryLo0 & 2) != 0;
-            tlb->D0 = (env->CP0_EntryLo0 & 4) != 0;
-            tlb->C0 = (env->CP0_EntryLo0 >> 3) & 0x7;
-            tlb->PFN[0] = (env->CP0_EntryLo0 >> 6) << 12;
-            tlb->V1 = (env->CP0_EntryLo1 & 2) != 0;
-            tlb->D1 = (env->CP0_EntryLo1 & 4) != 0;
-            tlb->C1 = (env->CP0_EntryLo1 >> 3) & 0x7;
-            tlb->PFN[1] = (env->CP0_EntryLo1 >> 6) << 12;
-            return;
-        }
+    idx = (env->CP0_Index & ~0x80000000) % env->tlb->nb_tlb;
+    tlb = &env->tlb->mmu.r4k.tlb[idx];
+    VPN = env->CP0_EntryHi & (TARGET_PAGE_MASK << 1);
+#if defined(TARGET_MIPS64)
+    VPN &= env->SEGMask;
+#endif
+    ASID = env->CP0_EntryHi & 0xff;
+    G = env->CP0_EntryLo0 & env->CP0_EntryLo1 & 1;
+    V0 = (env->CP0_EntryLo0 & 2) != 0;
+    D0 = (env->CP0_EntryLo0 & 4) != 0;
+    V1 = (env->CP0_EntryLo1 & 2) != 0;
+    D1 = (env->CP0_EntryLo1 & 4) != 0;
+
+    /* Discard cached TLB entries, unless tlbwi is just upgrading access
+       permissions on the current entry. */
+    if (tlb->VPN != VPN || tlb->ASID != ASID || tlb->G != G ||
+        (tlb->V0 && !V0) || (tlb->D0 && !D0) ||
+        (tlb->V1 && !V1) || (tlb->D1 && !D1)) {
+        r4k_mips_tlb_flush_extra(env, env->tlb->nb_tlb);
     }
 
-    /*flush all the tlb cache */
-    cpu_mips_tlb_flush (env, 1);
-
-    r4k_invalidate_tlb(env, env->CP0_Index % env->tlb->nb_tlb);
-    r4k_fill_tlb(env, env->CP0_Index % env->tlb->nb_tlb);
+    r4k_invalidate_tlb(env, idx, 0);
+    r4k_fill_tlb(env, idx);
 }
 
-void r4k_helper_tlbwr (CPUMIPSState *env)
+void r4k_helper_tlbwr(CPUMIPSState *env)
 {
     int r = cpu_mips_get_random(env);
 
-    r4k_invalidate_tlb_shadow(env, r);
+    r4k_invalidate_tlb(env, r, 1);
     r4k_fill_tlb(env, r);
 }
 
@@ -1850,17 +1647,34 @@ void r4k_helper_tlbp(CPUMIPSState *env)
         mask = tlb->PageMask | ~(TARGET_PAGE_MASK << 1);
         tag = env->CP0_EntryHi & ~mask;
         VPN = tlb->VPN & ~mask;
+#if defined(TARGET_MIPS64)
+        tag &= env->SEGMask;
+#endif
         /* Check ASID, virtual page number & size */
-        if (unlikely((tlb->G == 1 || tlb->ASID == ASID) && VPN == tag)) {
+        if ((tlb->G == 1 || tlb->ASID == ASID) && VPN == tag) {
             /* TLB match */
             env->CP0_Index = i;
             break;
         }
     }
     if (i == env->tlb->nb_tlb) {
-        /* No match.  Discard any shadow entries, if any of them match. */
-        int index = ((env->CP0_EntryHi>>5)&0x1ff00) | ASID;
-        index |= (env->CP0_EntryHi>>13)&0x20000;
+        /* No match.  Discard any shadow entries, if any of them match.  */
+        for (i = env->tlb->nb_tlb; i < env->tlb->tlb_in_use; i++) {
+            tlb = &env->tlb->mmu.r4k.tlb[i];
+            /* 1k pages are not supported. */
+            mask = tlb->PageMask | ~(TARGET_PAGE_MASK << 1);
+            tag = env->CP0_EntryHi & ~mask;
+            VPN = tlb->VPN & ~mask;
+#if defined(TARGET_MIPS64)
+            tag &= env->SEGMask;
+#endif
+            /* Check ASID, virtual page number & size */
+            if ((tlb->G == 1 || tlb->ASID == ASID) && VPN == tag) {
+                r4k_mips_tlb_flush_extra (env, i);
+                break;
+            }
+        }
+
         env->CP0_Index |= 0x80000000;
     }
 }
@@ -1869,16 +1683,17 @@ void r4k_helper_tlbr(CPUMIPSState *env)
 {
     r4k_tlb_t *tlb;
     uint8_t ASID;
+    int idx;
 
     ASID = env->CP0_EntryHi & 0xFF;
-    tlb = &env->tlb->mmu.r4k.tlb[env->CP0_Index % env->tlb->nb_tlb];
+    idx = (env->CP0_Index & ~0x80000000) % env->tlb->nb_tlb;
+    tlb = &env->tlb->mmu.r4k.tlb[idx];
 
     /* If this will change the current ASID, flush qemu's TLB.  */
     if (ASID != tlb->ASID)
         cpu_mips_tlb_flush (env, 1);
 
-    /*flush all the tlb cache */
-    cpu_mips_tlb_flush (env, 1);
+    r4k_mips_tlb_flush_extra(env, env->tlb->nb_tlb);
 
     env->CP0_EntryHi = tlb->VPN | tlb->ASID;
     env->CP0_PageMask = tlb->PageMask;
@@ -2049,7 +1864,7 @@ void helper_pmon(CPUMIPSState *env, int function)
         break;
     case 158:
         {
-            unsigned char *fmt = (void *)(unsigned long)env->active_tc.gpr[4];
+            unsigned char *fmt = (void *)(uintptr_t)env->active_tc.gpr[4];
             printf("%s", fmt);
         }
         break;
@@ -2124,11 +1939,11 @@ void cpu_unassigned_access(CPUMIPSState* env, hwaddr addr,
  * The following functions are address translation helper functions
  * for fast memory access in QEMU.
  */
-static unsigned long v2p_mmu(CPUMIPSState *env, target_ulong addr, int is_user)
+static uintptr_t v2p_mmu(CPUMIPSState *env, target_ulong addr, int is_user)
 {
     int index;
     target_ulong tlb_addr;
-    hwaddr physaddr;
+    uintptr_t physaddr;
     uintptr_t retaddr;
 
     index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
@@ -2150,12 +1965,12 @@ redo:
  * to the address of simulation host (not the physical
  * address of simulated OS.
  */
-unsigned long v2p(target_ulong ptr, int is_user)
+uintptr_t v2p(target_ulong ptr, int is_user)
 {
     CPUMIPSState *env;
     int index;
     target_ulong addr;
-    hwaddr physaddr;
+    uintptr_t physaddr;
 
     env = cpu_single_env;
     addr = ptr;

@@ -1254,7 +1254,10 @@ qemud_service_load(  QEMUFile*  f, QemudService*  current_services  )
 
     /* reconfigure service as required */
     sv->max_clients = qemu_get_be32(f);
-    sv->num_clients = qemu_get_be32(f);
+    sv->num_clients = 0;
+
+    // NOTE: The number of clients saved cannot be verified now.
+    (void) qemu_get_be32(f);
 
     /* load service specific data */
     int ret;
@@ -1838,7 +1841,6 @@ qemud_load(QEMUFile *f, void* opaque, int version)
         return ret;
     if ((ret = qemud_load_clients(f, m, version)))
         return ret;
-
     return 0;
 }
 
@@ -1916,7 +1918,7 @@ _qemudPipe_init(void* hwpipe, void* _looper, const char* args)
      * service name wit ':'. Separate service name from the client param. */
     client_args = strchr(args, ':');
     if (client_args != NULL) {
-        srv_name_len = min(client_args - args, sizeof(service_name) - 1);
+        srv_name_len = min(client_args - args, (intptr_t)sizeof(service_name) - 1);
         client_args++;  // Past the ':'
         if (*client_args == '\0') {
             /* No actual parameters. */

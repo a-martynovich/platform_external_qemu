@@ -215,6 +215,7 @@ int ffs(int x) {
         if (ux & 1)
             return result + 1;
         ux >>= 1;
+        ++result;
     }
     return 0;
 }

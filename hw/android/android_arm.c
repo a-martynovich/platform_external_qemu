@@ -19,6 +19,7 @@
 #include "android/globals.h"
 #include "audio/audio.h"
 #include "hw/arm/arm.h"
+#include "exec/ram_addr.h"
 #include "ui/console.h"
 #include "sysemu/blockdev.h"
 #include "hw/android/goldfish/pipe.h"
@@ -123,6 +124,8 @@ static void android_arm_init_(ram_addr_t ram_size,
     goldfish_add_device_no_io(&nand_device);
     nand_dev_init(nand_device.base);
 #endif
+
+    trace_dev_init();
 
     bool newDeviceNaming =
             (androidHwConfig_getKernelDeviceNaming(android_hw) >= 1);
