@@ -328,9 +328,6 @@ add_executable(emulator
         qobject/qjson.c
         qobject/qlist.c
         qobject/qstring.c
-        qom/container.c
-        qom/object.c
-        qom/qom-qobject.c
         savevm.c
         slirp-android/bootp.c
         slirp-android/cksum.c
