@@ -266,9 +266,6 @@ add_executable(emulator
         util/unicode.c
         util/yield-android.c
         disas/i386.c
-        tap-win32.c
-        android/camera/camera-capture-windows.c
-        util/qemu-thread-win32.c
 
 # SLIRP slirp-android/
         slirp-android/bootp.c
@@ -431,6 +428,8 @@ add_executable(emulator
         distrib/sdl2-2.0.3/src/audio/SDL_audiocvt.c
         distrib/sdl2-2.0.3/src/audio/SDL_audiotypecvt.c
         distrib/sdl2-2.0.3/src/audio/SDL_mixer.c
+        distrib/sdl2-2.0.3/src/audio/dummy/SDL_dummyaudio.c
+        distrib/sdl2-2.0.3/src/audio/disk/SDL_diskaudio.c
 
 # ZLIB  distrib/zlib-1.2.8
         distrib/zlib-1.2.8/adler32.c
@@ -594,6 +593,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         android/base/threads/Thread_win32.cpp
         target-i386/hax-windows.c
         audio/winaudio.c
+        tap-win32.c
+        android/camera/camera-capture-windows.c
+        util/qemu-thread-win32.c
 
 # SDL2  distrib/sdl2-2.0.3/src
         distrib/sdl2-2.0.3/src/core/windows/SDL_windows.c
@@ -607,7 +609,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 #        distrib/sdl2-2.0.3/src/audio/xaudio2/SDL_xaudio2.c
         distrib/sdl2-2.0.3/src/audio/directsound/SDL_directsound.c
         distrib/sdl2-2.0.3/src/audio/winmm/SDL_winmm.c
-        distrib/sdl2-2.0.3/src/audio/dummy/SDL_dummyaudio.c
 # src/video
         distrib/sdl2-2.0.3/src/video/windows/SDL_windowsclipboard.c
         distrib/sdl2-2.0.3/src/video/windows/SDL_windowsevents.c
@@ -636,6 +637,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         -DUSE_MINGW=1
 #        -falign-functions=0
         -D_GNU_SOURCE=1 -Dmain=SDL_main -DNO_STDIO_REDIRECT=1
+        -DSDL_VIDEO_OPENGL_EGL=0 -DSDL_VIDEO_RENDER_OGL_ES2=0
+        -DSDL_AUDIO_DISABLED=1
         -D_WIN32
         -D_WIN64
         -DWINVER=0x501
@@ -655,6 +658,26 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 else()
     target_sources(emulator PRIVATE
         android/base/threads/Thread_pthread.cpp
+        distrib/sdl2-2.0.3/src/timer/unix/SDL_systimer.c
+        distrib/sdl2-2.0.3/src/loadso/dlopen/SDL_sysloadso.c
+        distrib/sdl2-2.0.3/src/main/dummy/SDL_dummy_main.c
+        distrib/sdl2-2.0.3/src/thread/pthread/SDL_syscond.c
+        distrib/sdl2-2.0.3/src/thread/pthread/SDL_sysmutex.c
+        distrib/sdl2-2.0.3/src/thread/pthread/SDL_syssem.c
+        distrib/sdl2-2.0.3/src/thread/pthread/SDL_systhread.c
+        distrib/sdl2-2.0.3/src/thread/pthread/SDL_systls.c
+
+        os-posix.c
+        util/oslib-posix.c
+
+        distrib/libselinux/src/callbacks.c
+        distrib/libselinux/src/check_context.c
+        distrib/libselinux/src/freecon.c
+        distrib/libselinux/src/init.c
+        distrib/libselinux/src/label.c
+        distrib/libselinux/src/label_file.c
+        distrib/libselinux/src/label_android_property.c
+
     )
     target_include_directories(emulator PRIVATE
         distrib/libselinux/include
@@ -672,6 +695,10 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     find_library(COREADUIO_LIBRARY CoreAudio)
     find_library(COREVIDEO_LIBRARY CoreVideo)
     find_library(QTKIT_LIBRARY QtKit)
+    find_library(AVF_LIBRARY AVFoundation)
+    find_library(CM_LIBRARY CoreMedia)
+    find_library(AU_LIBRARY AudioUnit)
+    find_library(FF_LIBRARY ForceFeedback)
     target_compile_definitions(emulator PRIVATE
         -D_DARWIN_C_SOURCE=1
         -D_GNU_SOURCE=1
@@ -684,18 +711,28 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         android/config/darwin-x86_64
     )
     target_link_libraries(emulator PRIVATE
-        ${COREFOUNDATION_LIBRARY} ${APPSVC_LIBRARY} ${OPENGL_LIBRARY} ${CARBON_LIBRARY} ${IOKIT_LIBRARY} ${COCOA_LIBRARY}
+        ${COREFOUNDATION_LIBRARY} ${APPSVC_LIBRARY} ${OPENGL_LIBRARY}
+        ${CARBON_LIBRARY} ${IOKIT_LIBRARY} ${COCOA_LIBRARY} ${AVF_LIBRARY}
         ${COREVIDEO_LIBRARY} ${COREADUIO_LIBRARY} ${QTKIT_LIBRARY}
+        ${CM_LIBRARY} ${AU_LIBRARY} ${FF_LIBRARY}
         /usr/lib/dylib1.o
     )
     target_sources(emulator PRIVATE
-        distrib/sdl-1.2.15/src/video/quartz/SDL_QuartzGL.m
-        distrib/sdl-1.2.15/src/video/quartz/SDL_QuartzVideo.m
-        distrib/sdl-1.2.15/src/video/quartz/SDL_QuartzWM.m
-        distrib/sdl-1.2.15/src/video/quartz/SDL_QuartzWindow.m
-        distrib/sdl-1.2.15/src/video/quartz/SDL_QuartzEvents.m
-        distrib/sdl-1.2.15/src/main/macosx/SDLMain.m
-        distrib/sdl-1.2.15/src/loadso/macosx/SDL_dlcompat.c
+        distrib/sdl2-2.0.3/src/haptic/darwin/SDL_syshaptic.c
+        distrib/sdl2-2.0.3/src/audio/coreaudio/SDL_coreaudio.c
+        distrib/sdl2-2.0.3/src/file/cocoa/SDL_rwopsbundlesupport.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoaclipboard.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoaevents.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoakeyboard.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoamessagebox.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoamodes.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoamouse.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoamousetap.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoaopengl.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoashape.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoavideo.m
+        distrib/sdl2-2.0.3/src/video/cocoa/SDL_cocoawindow.m
+        distrib/sdl2-2.0.3/src/joystick/darwin/SDL_sysjoystick.c
 
         audio/coreaudio.c
 
@@ -703,6 +740,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         util/compatfd.c
         util/qemu-thread-posix.c
         target-i386/hax-darwin.c
+
     )
 endif()
 
