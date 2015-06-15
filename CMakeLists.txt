@@ -87,7 +87,7 @@ add_executable(emulator
         android/emulator-window.c
         android/resource.c
         android/user-config.c
-        android/main-emulator.c
+#        android/main-emulator.c
         tcg/optimize.c
         tcg/tcg.c
         tcg-runtime.c
@@ -133,7 +133,7 @@ add_executable(emulator
         android/help.c
         android/main-common.c
         android/main-common-ui.c
-#        android/main.c
+        android/main.c
         android/opengles.c
         android/user-events-qemu.c
         hw/core/loader.c
